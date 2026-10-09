@@ -22,12 +22,9 @@ updates:
     schedule:
       interval: weekly
     groups:
-      minor-and-patch:
+      actions:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
 
   # Rust toolchain image used for builds in containers.
   - package-ecosystem: docker
@@ -41,3 +38,7 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: node
+        update-types:
+          - version-update:semver-major
