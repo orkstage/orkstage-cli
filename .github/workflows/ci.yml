@@ -136,7 +136,7 @@ jobs:
           ditto -c -k --keepParent "$BIN" ork.zip
           xcrun notarytool submit ork.zip --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ork-${{ matrix.target }}
           path: |
