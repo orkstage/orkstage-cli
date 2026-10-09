@@ -10,14 +10,34 @@ updates:
       wasm-bindgen:
         # Keep `wasm-bindgen` in step with `wasm-bindgen-cli` in `docker/` and the CI workflow.
         patterns: ['wasm-bindgen', 'js-sys', 'serde-wasm-bindgen']
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   # Rust toolchain image used for builds in containers.
   - package-ecosystem: docker
     directory: /docker
     schedule:
       interval: weekly
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch

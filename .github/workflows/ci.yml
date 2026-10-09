@@ -5,7 +5,11 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
+# macOS minutes bill at 10x and Windows at 2x on private repositories: pull requests and pushes
+# to main test on Linux only; the full OS matrix and the release builds run for version tags or
+# on demand (Actions > ci > Run workflow).
 permissions:
   contents: read
 
@@ -30,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ fromJSON((startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -63,6 +67,7 @@ jobs:
           node -e "const s=require('./dist/scan-wasm'); const r=s.scanFiles([{path:'docker-compose.yml',content:'services:\n  db:\n    image: postgres:17\n'}]); if(!r.resources.some(x=>x.id==='database')) process.exit(1); console.log(s.version())"
 
   build:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: [lint, test]
     env:
       # Signing runs only on tags and only when the secrets exist (forks and PRs build unsigned).
