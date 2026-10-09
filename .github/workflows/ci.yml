@@ -55,7 +55,7 @@ jobs:
       - run: sh scripts/build-wasm.sh
       - name: The committed WebAssembly package is up to date
         run: git diff --exit-code -- dist/scan-wasm
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
       - name: Smoke test the npm package
