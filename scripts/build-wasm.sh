@@ -8,6 +8,12 @@ set -eu
 OUT=dist/scan-wasm
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
 
+# Reproducible output: panic locations embed source paths, so map the Cargo home and this
+# checkout to fixed names. CI rebuilds the package and requires it to match the committed one.
+CARGO_HOME_DIR=${CARGO_HOME:-$HOME/.cargo}
+RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$CARGO_HOME_DIR=/cargo --remap-path-prefix=$(pwd)=/build"
+export RUSTFLAGS
+
 cargo build -p orkstage-scan-wasm --release --target wasm32-unknown-unknown
 rm -rf "$OUT"
 mkdir -p "$OUT"
