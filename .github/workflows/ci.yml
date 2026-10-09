@@ -21,7 +21,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -37,7 +37,7 @@ jobs:
         os: ${{ fromJSON((startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -49,7 +49,7 @@ jobs:
   wasm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -59,7 +59,7 @@ jobs:
       - run: sh scripts/build-wasm.sh
       - name: The committed WebAssembly package is up to date
         run: git diff --exit-code -- dist/scan-wasm
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
       - name: Smoke test the npm package
@@ -87,7 +87,7 @@ jobs:
           - { target: aarch64-pc-windows-msvc, os: windows-latest }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -107,7 +107,7 @@ jobs:
       # then notarize with `xcrun notarytool submit --wait` (zip the binary first).
       - name: Sign (Windows, Authenticode)
         if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/') && env.SIGN_WINDOWS == 'true'
-        uses: azure/trusted-signing-action@v0
+        uses: azure/trusted-signing-action@v2
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -141,7 +141,7 @@ jobs:
           ditto -c -k --keepParent "$BIN" ork.zip
           xcrun notarytool submit ork.zip --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ork-${{ matrix.target }}
           path: |
