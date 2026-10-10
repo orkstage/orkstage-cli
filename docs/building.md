@@ -43,7 +43,7 @@ Snapshot tests use `insta`. After an intended change, run the tests with
 Run the Linux binary on the Docker Compose network of the platform:
 
 ```sh
-docker run --rm --network cloud-orchestrator_default \
+docker run --rm --network orkstage_default \
   -e ORK_API_URL=http://api:4000 -e ORK_TOKEN=<your ork_live_ key> \
   -v orkstage-cli-target:/t:ro debian:bookworm-slim /t/release/ork whoami
 ```
