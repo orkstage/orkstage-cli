@@ -239,6 +239,24 @@ pub struct Tenant {
     pub slug: String,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CloudTarget {
+    pub id: String,
+    pub tenant_id: Option<String>,
+    pub name: String,
+    pub provider: String,
+    pub status: String,
+}
+
+/// Ids are UUIDs; anything else is a name to resolve.
+pub fn is_uuid(s: &str) -> bool {
+    s.len() == 36
+        && s.chars()
+            .enumerate()
+            .all(|(i, c)| if [8, 13, 18, 23].contains(&i) { c == '-' } else { c.is_ascii_hexdigit() })
+}
+
 pub fn is_terminal_status(status: &str) -> bool {
     matches!(status, "SUCCEEDED" | "FAILED" | "PARTIALLY_FAILED" | "CANCELLED")
 }
@@ -292,6 +310,10 @@ impl ApiClient {
             )
         })?;
         self.get(&format!("/instances/{}", found.id), &[]).await
+    }
+
+    pub async fn targets(&self) -> Result<Vec<CloudTarget>> {
+        self.get("/cloud/targets", &[]).await
     }
 
     pub async fn template_by_name(&self, name: &str) -> Result<Option<Template>> {

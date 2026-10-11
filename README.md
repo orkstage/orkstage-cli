@@ -72,8 +72,8 @@ console:
 ```sh
 ork login --api-url http://localhost:4000     # prompts for the API key (ork_live_...)
 ork init                                      # scans and writes .ork/
-ork template validate && ork template push    # creates the template or adds a version
-ork deploy --wait                             # deploys the instance named in .ork/config.toml
+# fill [placements] in .ork/config.toml: one cloud target and region per slot
+ork up --publish --wait                       # push, publish, create the instance if needed, deploy
 ork status && ork logs api
 ```
 

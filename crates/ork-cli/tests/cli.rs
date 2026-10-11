@@ -170,6 +170,54 @@ fn exit_codes_without_platform() {
 }
 
 #[test]
+fn instances_create_and_up_check_the_project_first() {
+    let cfg = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let ork_dir = project.path().join(".ork");
+    std::fs::create_dir_all(&ork_dir).unwrap();
+    let base = "api_url = \"http://127.0.0.1:9\"
+tenant = \"acme\"
+
+[template]
+name = \"shop\"
+
+[instance]
+slug = \"shop-dev\"
+environment = \"development\"
+";
+    std::fs::write(ork_dir.join("config.toml"), base).unwrap();
+    // No placements → usage, before any network call (the API URL is unreachable).
+    ork(cfg.path())
+        .current_dir(project.path())
+        .args(["up"])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("[placements]"));
+    let with_placements = format!(
+        "{base}
+[placements]
+primary = {{ target = \"aws-dev\", region = \"us-east-1\" }}
+"
+    );
+    std::fs::write(ork_dir.join("config.toml"), with_placements).unwrap();
+    // Not a terminal and no --yes → usage.
+    ork(cfg.path())
+        .current_dir(project.path())
+        .args(["instances", "create"])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("--yes"));
+    // Malformed --var → usage.
+    ork(cfg.path())
+        .current_dir(project.path())
+        .args(["instances", "create", "--yes", "--var", "novalue"])
+        .assert()
+        .code(2);
+    // Valid project and --yes: reaches the API step (no credentials → auth).
+    ork(cfg.path()).current_dir(project.path()).args(["instances", "create", "--yes"]).assert().code(3);
+}
+
+#[test]
 fn login_with_token_from_stdin_and_logout() {
     let cfg = tempfile::tempdir().unwrap();
     let token = "ork_test_0123abcd_abcdefghijklmnopqrstuvwxyz012345";

@@ -73,6 +73,8 @@ pub enum Command {
     /// List and inspect instances.
     #[command(subcommand)]
     Instances(InstancesCommand),
+    /// Push the template, create the instance if it does not exist, then deploy it.
+    Up(UpArgs),
     /// Deploy an instance.
     Deploy(DeployArgs),
     /// Show an instance, its resources and the last deployment.
@@ -143,6 +145,17 @@ pub enum TemplateCommand {
     Push(TemplateFileArgs),
     /// Show the difference between the local template and the latest server version.
     Diff(TemplateDiffArgs),
+    /// Publish a draft version so instances can use it (needs permission to publish templates).
+    Publish(TemplatePublishArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct TemplatePublishArgs {
+    #[arg(long, short = 'f')]
+    pub file: Option<PathBuf>,
+    /// Version to publish (default: metadata.version of the local template).
+    #[arg(long)]
+    pub template_version: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -181,6 +194,39 @@ pub enum InstancesCommand {
         #[arg(long)]
         tenant: Option<String>,
     },
+    /// Create the instance described in .ork/config.toml ([instance], [placements], [variables]).
+    Create(InstanceCreateArgs),
+}
+
+#[derive(Debug, Args, Default)]
+pub struct InstanceCreateArgs {
+    /// Display name (default: the slug).
+    #[arg(long)]
+    pub name: Option<String>,
+    /// Published template version to use (default: the latest published one).
+    #[arg(long)]
+    pub template_version: Option<String>,
+    /// Template variable, repeatable: --var key=value (overrides [variables]).
+    #[arg(long = "var", value_name = "KEY=VALUE")]
+    pub vars: Vec<String>,
+    /// Do not ask for confirmation (required when not running in a terminal).
+    #[arg(long, short = 'y')]
+    pub yes: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct UpArgs {
+    /// Also publish the pushed template version (needs permission to publish templates).
+    #[arg(long)]
+    pub publish: bool,
+    #[command(flatten)]
+    pub create: InstanceCreateArgs,
+    /// Stream deployment events until it finishes; exit non-zero on failure.
+    #[arg(long, short = 'w')]
+    pub wait: bool,
+    /// Give up waiting after this many seconds.
+    #[arg(long, default_value_t = 3600)]
+    pub timeout: u64,
 }
 
 #[derive(Debug, Args)]
