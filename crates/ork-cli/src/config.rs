@@ -20,6 +20,8 @@ pub struct ProjectConfig {
     pub template: TemplateSection,
     pub instance: InstanceSection,
     pub placements: BTreeMap<String, Binding>,
+    /// Template variables for `ork instances create` (strings, numbers or booleans).
+    pub variables: BTreeMap<String, toml::Value>,
     pub scan: ScanSection,
 }
 

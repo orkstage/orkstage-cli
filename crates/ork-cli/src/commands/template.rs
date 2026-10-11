@@ -1,4 +1,4 @@
-//! `ork template validate | push | diff`.
+//! `ork template validate | push | diff | publish`.
 
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -7,13 +7,13 @@ use regex::Regex;
 use serde_json::{Value, json};
 
 use super::client;
-use crate::api::{Template, TemplateVersion};
-use crate::cli::{TemplateDiffArgs, TemplateFileArgs};
+use crate::api::{ApiClient, Template, TemplateVersion};
+use crate::cli::{TemplateDiffArgs, TemplateFileArgs, TemplatePublishArgs};
 use crate::config::Ctx;
 use crate::error::{CliError, Result};
 use crate::output::{self, heading};
 
-fn template_path(ctx: &Ctx, file: Option<&PathBuf>) -> Result<PathBuf> {
+pub fn template_path(ctx: &Ctx, file: Option<&PathBuf>) -> Result<PathBuf> {
     match file {
         Some(f) if f.is_absolute() => Ok(f.clone()),
         Some(f) => Ok(ctx.cwd.join(f)),
@@ -147,9 +147,31 @@ pub async fn validate(ctx: &Ctx, args: TemplateFileArgs) -> Result<()> {
 
 pub async fn push(ctx: &Ctx, args: TemplateFileArgs) -> Result<()> {
     let path = template_path(ctx, args.file.as_ref())?;
-    let mut source = read(&path)?;
-    let (name, local_version) = require_name(&source)?;
     let api = client(ctx)?;
+    let result = push_file(&api, &path).await?;
+    let name = result["template"].as_str().unwrap_or("").to_string();
+    if ctx.json() {
+        output::print_json(&result);
+        return Ok(());
+    }
+    let action = result["action"].as_str().unwrap_or("");
+    let version = result["version"].as_str().unwrap_or("");
+    match action {
+        "up-to-date" => eprintln!("{name}@{version} is already up to date."),
+        "created" => eprintln!("Created template {name} {version} (DRAFT). Publish it in the console when reviewed."),
+        _ => eprintln!(
+            "Pushed {name} {version} (DRAFT){}.",
+            result["previousVersion"].as_str().map(|p| format!(", previous {p}")).unwrap_or_default()
+        ),
+    }
+    Ok(())
+}
+
+/// Creates the template or adds a version (bumping the patch version in the file when needed).
+/// Returns `{ action: created | version-added | up-to-date, template, templateId, version, ... }`.
+pub async fn push_file(api: &ApiClient, path: &PathBuf) -> Result<Value> {
+    let mut source = read(path)?;
+    let (name, local_version) = require_name(&source)?;
     let result: Value = match api.template_by_name(&name).await? {
         None => {
             let created: Value = api.post("/templates", &json!({ "source": source })).await?;
@@ -165,13 +187,10 @@ pub async fn push(ctx: &Ctx, args: TemplateFileArgs) -> Result<()> {
             let server = latest(&t).map(|v| v.version.clone());
             if latest(&t).is_some_and(|v| v.source == source) {
                 // Same content as the latest version: nothing to push, and no version churn.
-                let r = json!({ "action": "up-to-date", "template": name, "templateId": t.id, "version": server });
-                if ctx.json() {
-                    output::print_json(&r);
-                } else {
-                    eprintln!("{name}@{} is already up to date.", server.unwrap_or_default());
-                }
-                return Ok(());
+                let status = latest(&t).map(|v| v.status.clone());
+                return Ok(
+                    json!({ "action": "up-to-date", "template": name, "templateId": t.id, "version": server, "status": status }),
+                );
             }
             let mut version = local_version.clone();
             if let Some(sv) = &server
@@ -180,7 +199,7 @@ pub async fn push(ctx: &Ctx, args: TemplateFileArgs) -> Result<()> {
                 let (a, b, c) = semver(sv);
                 version = format!("{a}.{b}.{}", c + 1);
                 source = set_version(&source, &version);
-                std::fs::write(&path, &source).map_err(|e| CliError::io(format!("writing {}", path.display()), e))?;
+                std::fs::write(path, &source).map_err(|e| CliError::io(format!("writing {}", path.display()), e))?;
             }
             let v: Value = api.post(&format!("/templates/{}/versions", t.id), &json!({ "source": source })).await?;
             json!({
@@ -194,21 +213,38 @@ pub async fn push(ctx: &Ctx, args: TemplateFileArgs) -> Result<()> {
             })
         }
     };
+    Ok(result)
+}
+
+pub async fn publish(ctx: &Ctx, args: TemplatePublishArgs) -> Result<()> {
+    let path = template_path(ctx, args.file.as_ref())?;
+    let (name, local_version) = require_name(&read(&path)?)?;
+    let version = args.template_version.unwrap_or(local_version);
+    let api = client(ctx)?;
+    let published = publish_version(&api, &name, &version).await?;
     if ctx.json() {
-        output::print_json(&result);
+        output::print_json(&published);
     } else {
-        let action = result["action"].as_str().unwrap_or("");
-        let version = result["version"].as_str().unwrap_or("");
-        if action == "created" {
-            eprintln!("Created template {name} {version} (DRAFT). Publish it in the console when reviewed.");
-        } else {
-            eprintln!(
-                "Pushed {name} {version} (DRAFT){}.",
-                result["previousVersion"].as_str().map(|p| format!(", previous {p}")).unwrap_or_default()
-            );
-        }
+        eprintln!("Published {name} {version}. Instances can use it now.");
     }
     Ok(())
+}
+
+/// Publishes a draft version; the server validates it again and refuses an invalid one.
+pub async fn publish_version(api: &ApiClient, name: &str, version: &str) -> Result<Value> {
+    let t = api.template_by_name(name).await?.ok_or_else(|| {
+        CliError::not_found(
+            format!("template \"{name}\" does not exist on the server"),
+            Some("create it with `ork template push`".into()),
+        )
+    })?;
+    let v = t.versions.as_ref().and_then(|vs| vs.iter().find(|v| v.version == version)).ok_or_else(|| {
+        CliError::not_found(format!("{name} has no version {version}"), Some("push it with `ork template push`".into()))
+    })?;
+    if v.status == "PUBLISHED" {
+        return Ok(json!({ "template": name, "version": version, "versionId": v.id, "status": "PUBLISHED" }));
+    }
+    api.post(&format!("/templates/{}/versions/{}/publish", t.id, v.id), &json!({})).await
 }
 
 pub async fn diff(ctx: &Ctx, args: TemplateDiffArgs) -> Result<()> {

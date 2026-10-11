@@ -2,6 +2,7 @@ mod auth;
 mod operate;
 mod project;
 mod template;
+mod up;
 
 use std::path::{Path, PathBuf};
 
@@ -25,6 +26,8 @@ pub async fn run(cli: Cli, ctx: Ctx) -> Result<()> {
         Command::Template(TemplateCommand::Validate(a)) => template::validate(&ctx, a).await,
         Command::Template(TemplateCommand::Push(a)) => template::push(&ctx, a).await,
         Command::Template(TemplateCommand::Diff(a)) => template::diff(&ctx, a).await,
+        Command::Template(TemplateCommand::Publish(a)) => template::publish(&ctx, a).await,
+        Command::Up(args) => up::up(&ctx, args).await,
         Command::Import(args) => operate::import(&ctx, args).await,
         Command::Instances(cmd) => operate::instances(&ctx, cmd).await,
         Command::Deploy(args) => operate::deploy(&ctx, args).await,

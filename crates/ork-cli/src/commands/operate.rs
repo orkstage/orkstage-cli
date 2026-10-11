@@ -51,7 +51,10 @@ pub async fn import(ctx: &Ctx, args: ImportArgs) -> Result<()> {
 }
 
 pub async fn instances(ctx: &Ctx, cmd: InstancesCommand) -> Result<()> {
-    let InstancesCommand::List { tenant } = cmd;
+    let tenant = match cmd {
+        InstancesCommand::List { tenant } => tenant,
+        InstancesCommand::Create(args) => return super::up::create(ctx, args).await,
+    };
     let api = client(ctx)?;
     let tenant_id = match tenant {
         Some(t) => Some(api.resolve_tenant(&t).await?.id),
@@ -101,16 +104,20 @@ fn selected_slug(ctx: &Ctx, sel: &InstanceSelector) -> Result<String> {
 pub async fn deploy(ctx: &Ctx, args: DeployArgs) -> Result<()> {
     let slug = selected_slug(ctx, &args.selector)?;
     let api = client(ctx)?;
-    let instance = api.instance_by_slug(&slug).await?;
+    deploy_slug(ctx, &api, &slug, args.wait, args.timeout).await
+}
+
+pub async fn deploy_slug(ctx: &Ctx, api: &ApiClient, slug: &str, wait: bool, timeout: u64) -> Result<()> {
+    let instance = api.instance_by_slug(slug).await?;
     let d: Deployment = api.post(&format!("/instances/{}/deploy", instance.id), &json!({})).await?;
     output::note(ctx, &format!("Deployment {} queued for {slug} (correlation id {}).", d.id, d.correlation_id));
-    if !args.wait {
+    if !wait {
         if ctx.json() {
             output::print_json(&d);
         }
         return Ok(());
     }
-    let finished = follow(ctx, &api, &d.id, Duration::from_secs(args.timeout)).await?;
+    let finished = follow(ctx, api, &d.id, Duration::from_secs(timeout)).await?;
     finish(ctx, finished)
 }
 
