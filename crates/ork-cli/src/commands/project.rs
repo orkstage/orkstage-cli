@@ -6,7 +6,8 @@ use std::path::Path;
 use orkstage_scan::{DetectedResource, ScanReport};
 use serde_json::Value;
 
-use super::{default_name, resolve_path, scan_project};
+use super::template::{metadata, set_metadata};
+use super::{client, default_name, resolve_path, scan_project};
 use crate::cli::{InitArgs, OutputFormat, ScanArgs};
 use crate::config::{Binding, Ctx, ORK_DIR, ProjectConfig, render_project_config};
 use crate::error::{CliError, Result};
@@ -29,6 +30,49 @@ pub fn write_outputs(ork_dir: &Path, report: &ScanReport) -> Result<()> {
         write(".gitignore", GITIGNORE)?;
     }
     Ok(())
+}
+
+/// Written when the scan finds nothing deployable, so the first template still validates.
+pub fn starter_template(name: &str) -> String {
+    let display: String = name
+        .split('-')
+        .filter(|w| !w.is_empty())
+        .map(|w| {
+            let mut c = w.chars();
+            c.next().map(|f| f.to_ascii_uppercase().to_string() + c.as_str()).unwrap_or_default()
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!(
+        "# Starter written by `ork init`: nothing deployable was detected in this directory.\n\
+         # Replace the image with yours (a digest or a catalog reference) and add what the app needs.\n\
+         apiVersion: platform/v1\n\
+         kind: EnvironmentTemplate\n\
+         metadata:\n  name: {name}\n  version: 0.1.0\n  displayName: {display}\n  \
+         description: \"Starter: one network and one web service.\"\n  profile: starter\n\
+         spec:\n  plans: [STARTER, GROWTH]\n  placements:\n    - name: primary\n      \
+         description: \"Bind any cloud target.\"\n  resources:\n    - id: network\n      type: network\n    \
+         - id: web\n      type: compute.container-service\n      image: catalog://sample-api\n      port: 8080\n"
+    )
+}
+
+/// Template and slot names of a marketplace listing, renamed to this project (version 0.1.0).
+async fn from_marketplace(ctx: &Ctx, slug: &str, name: &str) -> Result<(String, Vec<String>)> {
+    let api = client(ctx)?;
+    let listing: Value = api.get(&format!("/marketplace/listings/{slug}"), &[]).await?;
+    let source = listing.pointer("/template/source").and_then(Value::as_str).ok_or_else(|| {
+        CliError::not_found(format!("marketplace listing \"{slug}\" has no published template"), None)
+    })?;
+    let renamed = set_metadata(&set_metadata(source, "name", name), "version", "0.1.0");
+    if metadata(&renamed).0.as_deref() != Some(name) {
+        return Err(CliError::failed(format!("could not rename the template of \"{slug}\""), None));
+    }
+    let slots = listing
+        .pointer("/template/placements")
+        .and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(|p| p.get("name").and_then(Value::as_str).map(str::to_string)).collect())
+        .unwrap_or_default();
+    Ok((renamed, slots))
 }
 
 fn slots(report: &ScanReport) -> BTreeSet<String> {
@@ -79,7 +123,19 @@ pub async fn init(ctx: &Ctx, args: InitArgs) -> Result<()> {
         ));
     }
 
-    let (report, walked) = scan_project(ctx, &root, None, Some(name.clone()))?;
+    let (mut report, walked) = scan_project(ctx, &root, None, Some(name.clone()))?;
+    let mut slot_names = slots(&report);
+    let origin = if let Some(slug) = &args.from {
+        let (source, from_slots) = from_marketplace(ctx, slug, &name).await?;
+        report.template = source;
+        slot_names = from_slots.into_iter().collect();
+        format!("Template: marketplace listing {slug}, renamed {name}.")
+    } else if report.resources.is_empty() {
+        report.template = starter_template(&name);
+        "Template: nothing deployable was detected, so .ork/template.yaml is a starter (one web service).".into()
+    } else {
+        String::new()
+    };
 
     let tenant = match args.tenant.clone().or_else(|| ctx.tenant()) {
         Some(t) => Some(t),
@@ -113,7 +169,7 @@ pub async fn init(ctx: &Ctx, args: InitArgs) -> Result<()> {
     config.template.name = Some(name.clone());
     config.instance.slug = Some(slug.clone());
     config.instance.environment = Some(environment);
-    for s in slots(&report) {
+    for s in slot_names {
         // Left for the user: the cloud target and region of each slot.
         config.placements.insert(s, Binding::default());
     }
@@ -142,6 +198,7 @@ pub async fn init(ctx: &Ctx, args: InitArgs) -> Result<()> {
             "root": root.display().to_string(),
             "files": [".ork/config.toml", ".ork/template.yaml", ".ork/inventory.json", ".ork/.gitignore"],
             "template": name,
+            "templateOrigin": if args.from.is_some() { "marketplace" } else if report.resources.is_empty() { "starter" } else { "scan" },
             "instance": slug,
             "resources": report.resources.len(),
             "unmapped": report.unmapped.len(),
@@ -151,6 +208,9 @@ pub async fn init(ctx: &Ctx, args: InitArgs) -> Result<()> {
     }
     print_summary(ctx, &report, &walked);
     eprintln!();
+    if !origin.is_empty() {
+        eprintln!("{origin}");
+    }
     eprintln!("Created {}/ with config.toml, template.yaml, inventory.json and .gitignore.", ork_dir.display());
     eprintln!("Next: review .ork/template.yaml, then `ork template validate` and `ork template push`.");
     Ok(())
