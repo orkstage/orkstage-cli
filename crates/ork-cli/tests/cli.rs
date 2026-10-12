@@ -170,6 +170,32 @@ fn exit_codes_without_platform() {
 }
 
 #[test]
+fn init_in_an_empty_directory_writes_a_starter_template() {
+    let cfg = tempfile::tempdir().unwrap();
+    let empty = tempfile::tempdir().unwrap();
+    ork(cfg.path())
+        .current_dir(empty.path())
+        .args(["init", "--yes", "--name", "blank-app"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("starter"));
+    let template = std::fs::read_to_string(empty.path().join(".ork/template.yaml")).unwrap();
+    assert!(template.contains(
+        "  name: blank-app
+"
+    ));
+    assert!(template.contains(
+        "  displayName: Blank App
+"
+    ));
+    assert!(template.contains(
+        "    - id: web
+"
+    ));
+    assert!(!template.contains("resources: []"));
+}
+
+#[test]
 fn instances_create_and_up_check_the_project_first() {
     let cfg = tempfile::tempdir().unwrap();
     let project = tempfile::tempdir().unwrap();

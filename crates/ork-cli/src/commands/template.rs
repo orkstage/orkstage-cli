@@ -57,6 +57,12 @@ pub fn metadata(source: &str) -> (Option<String>, Option<String>) {
 }
 
 pub fn set_version(source: &str, version: &str) -> String {
+    set_metadata(source, "version", version)
+}
+
+/// Replaces `metadata.<field>` (a top level key of the metadata block) in block style YAML.
+pub fn set_metadata(source: &str, field: &str, value: &str) -> String {
+    let key = format!("{field}:");
     let mut in_meta = false;
     let mut done = false;
     let mut out: Vec<String> = Vec::new();
@@ -65,11 +71,11 @@ pub fn set_version(source: &str, version: &str) -> String {
             in_meta = line.trim_end() == "metadata:";
         } else if in_meta
             && !done
-            && line.trim_start().starts_with("version:")
+            && line.trim_start().starts_with(&key)
             && line.starts_with("  ")
             && !line.starts_with("   ")
         {
-            out.push(format!("  version: {version}"));
+            out.push(format!("  {field}: {value}"));
             done = true;
             continue;
         }
@@ -309,5 +315,8 @@ mod tests {
         assert_eq!(metadata(&bumped).1.as_deref(), Some("0.1.1"));
         assert!(bumped.contains("version: \"17\""));
         assert!(semver("1.10.0") > semver("1.9.9"));
+        let renamed = set_metadata(src, "name", "web");
+        assert_eq!(metadata(&renamed), (Some("web".into()), Some("0.1.0".into())));
+        assert!(renamed.contains("displayName: Shop"));
     }
 }

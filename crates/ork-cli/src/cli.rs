@@ -126,6 +126,9 @@ pub struct InitArgs {
     /// Overwrite an existing .ork/ configuration.
     #[arg(long)]
     pub force: bool,
+    /// Start from a template in the marketplace (listing slug) instead of the scan's template.
+    #[arg(long, value_name = "SLUG")]
+    pub from: Option<String>,
     /// Project directory (default: current directory).
     pub path: Option<PathBuf>,
 }
