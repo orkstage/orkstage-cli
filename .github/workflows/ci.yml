@@ -204,10 +204,11 @@ jobs:
       - uses: actions/download-artifact@v6
         with:
           pattern: ork-*
-          path: dist
+          # Not dist/: that directory is in the repository (dist/scan-wasm).
+          path: out
           merge-multiple: true
       - name: Checksums
-        working-directory: dist
+        working-directory: out
         run: |
           cp ../scripts/install.sh ../scripts/install.ps1 .
           sha256sum ork-* install.sh install.ps1 > SHA256SUMS
@@ -216,14 +217,14 @@ jobs:
       - if: github.event.repository.visibility == 'public'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: dist/ork-*
+          subject-path: out/ork-*
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           pre=""
           case "$GITHUB_REF_NAME" in *-*) pre="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes --title "ork ${GITHUB_REF_NAME#v}" $pre
+          gh release create "$GITHUB_REF_NAME" out/* --verify-tag --generate-notes --title "ork ${GITHUB_REF_NAME#v}" $pre
 
   # Installs the release just published with both scripts on clean runners. The files are served
   # from the runner itself, because a private repository's release cannot be downloaded anonymously.
