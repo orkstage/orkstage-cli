@@ -4,10 +4,18 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+/// `ork --version`: release builds set ORK_LONG_VERSION to "<version> (<commit> <date>)" at compile
+/// time; local builds show the crate version only.
+const LONG_VERSION: &str = match option_env!("ORK_LONG_VERSION") {
+    Some(v) => v,
+    None => env!("CARGO_PKG_VERSION"),
+};
+
 #[derive(Debug, Parser)]
 #[command(
     name = "ork",
     version,
+    long_version = LONG_VERSION,
     about = "OrkStage command line: scan a project into a template, push it, deploy and operate instances.",
     long_about = None,
     propagate_version = true,

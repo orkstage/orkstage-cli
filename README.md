@@ -41,12 +41,21 @@ flowchart LR
   api -->|"ork deploy --wait"| cloud["Instances on AWS<br/>(or simulated providers)"]
 ```
 
-> **Preview.** Commands and flags can still change. There are no released binaries yet; build
-> from source as shown below. Signed binaries for every platform are planned.
+> **Preview.** Commands and flags can still change.
 
 ## Quickstart
 
-Build and install from source (Rust 1.88 or later):
+Install a release (checksums verified, no administrator rights needed):
+
+```sh
+curl -fsSL https://orkstage.io/install.sh | sh          # Linux, macOS
+```
+
+```powershell
+irm https://orkstage.io/install.ps1 | iex               # Windows
+```
+
+Or build and install from source (Rust 1.88 or later):
 
 ```sh
 git clone https://github.com/orkstage/orkstage-cli.git
