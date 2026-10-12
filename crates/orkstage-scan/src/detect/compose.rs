@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Docker Compose files: backing services by image, application services by build/ports,
 //! connections from `depends_on` and from environment values that mention other services.
 

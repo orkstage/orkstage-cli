@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! API keys per API URL: the OS keychain (Keychain, Credential Manager, Secret Service), or
 //! a 0600 `credentials.toml` in the user config directory when no keychain is reachable
 //! (containers, headless CI). `ORK_CREDENTIALS_STORE=file` forces the file.

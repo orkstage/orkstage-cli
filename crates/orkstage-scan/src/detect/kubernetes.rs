@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Kubernetes manifests and Helm charts (best effort for templated files).
 
 use std::collections::{BTreeMap, BTreeSet};

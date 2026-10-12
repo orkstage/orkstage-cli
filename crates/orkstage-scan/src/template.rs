@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Renders the platform/v1 EnvironmentTemplate and validates it structurally (the same rules
 //! as `packages/templates` stages 1–2: ids, ranges, references, dependency cycles).
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Package manifests: client libraries imply *required* backing services (provider-neutral,
 //! low/medium confidence). ORMs alone do not count; drivers do.
 

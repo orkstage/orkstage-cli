@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Provider sizes → OrkStage t-shirt sizes, and unit parsing. Inverse of the adapters'
 //! size tables (e.g. `small` ↔ `db.t4g.small` in `packages/cloud-aws/src/stacks.ts`).
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! File classification and detector dispatch.
 
 mod cloudformation;

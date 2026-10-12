@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Scans a synthetic repository of ~2,000 files (Terraform, Compose, Kubernetes, packages and
 //! noise) to keep the engine fast.
 

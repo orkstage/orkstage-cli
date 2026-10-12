@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Terraform / OpenTofu (`*.tf`, `*.tf.json`).
 //!
 //! Files are grouped by directory (one module per directory). Directories that are called as

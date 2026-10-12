@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `ork instances create` and `ork up`: from a project directory to a deployed instance.
 
 use std::collections::BTreeMap;

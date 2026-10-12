@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `ork init` and `ork scan`.
 
 use std::collections::BTreeSet;

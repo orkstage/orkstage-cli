@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Merges detector evidence into a coherent set of resources: dedupe across sources (IaC
 //! wins over Compose/Kubernetes, which win over Dockerfiles and package hints), attach hints,
 //! infer the missing network/ingress/DNS, assign template ids and placement slots, and

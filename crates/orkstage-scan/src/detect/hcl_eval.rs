@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! HCL → JSON with symbolic expressions, plus a tiny evaluator for `var.*`, `local.*`,
 //! literals, comparisons and a few pure functions. Enough to resolve module defaults and the
 //! common `var.x == "EC2" ? a : b` patterns without implementing Terraform.

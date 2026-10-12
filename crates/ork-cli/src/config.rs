@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `.ork/config.toml` (project, committed) and the user config (per machine), plus the
 //! resolved settings with precedence flags > env > project > user.
 

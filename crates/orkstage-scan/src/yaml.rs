@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! YAML → JSON loader on top of `yaml-rust2`'s event parser.
 //!
 //! Why not the stock loader: it drops local tags, and CloudFormation short-form intrinsics

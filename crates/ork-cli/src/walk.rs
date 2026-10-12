@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Fast, parallel project walk: respects .gitignore, skips dependency/build directories and
 //! large or binary files, and only reads files a detector can use.
 

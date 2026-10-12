@@ -53,6 +53,16 @@ $RUN cargo test --workspace
 - `clippy -D warnings` is enforced; no `unwrap()` on user input or network data.
 - Prose in docs and help text: plain English, no em or en dashes, no emoji, sentence case.
 
+## License headers
+
+Every source file starts with an SPDX header, `AGPL-3.0-only`. Future `ee/` directories use
+`LicenseRef-OrkStage-Enterprise`, and code outside them never imports from them. CI runs the check;
+to add missing headers:
+
+```bash
+bash scripts/spdx.sh --fix
+```
+
 ## Git workflow
 
 Branch, pull request, squash merge when CI (`lint`, `test`, `wasm`) is green. Pull requests run

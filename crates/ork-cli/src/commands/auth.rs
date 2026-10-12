@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 use std::io::Read;
 
 use serde_json::{Value, json};

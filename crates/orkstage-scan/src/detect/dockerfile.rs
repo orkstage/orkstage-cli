@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Dockerfiles: `EXPOSE`, the final base image and `HEALTHCHECK` are hints for the service
 //! built from the same directory.
 
