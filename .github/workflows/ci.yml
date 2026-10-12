@@ -110,11 +110,14 @@ jobs:
           key: ${{ matrix.target }}
       - if: matrix.musl
         run: sudo apt-get update && sudo apt-get install -y musl-tools
-      # `ork --version` shows the commit and build date in release builds.
+      # The release version is the tag's (v0.2.0-rc.1 gives 0.2.0-rc.1), else the crate's. It names
+      # the archives, and `ork --version` shows it with the commit and build date.
       - name: Build info
         shell: bash
         run: |
           v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          case "$GITHUB_REF" in refs/tags/v*) v="${GITHUB_REF_NAME#v}" ;; esac
+          echo "ORK_RELEASE_VERSION=$v" >> "$GITHUB_ENV"
           echo "ORK_LONG_VERSION=$v (${GITHUB_SHA::7} $(date -u +%Y-%m-%d))" >> "$GITHUB_ENV"
       - run: cargo build --release --locked -p ork-cli --target ${{ matrix.target }}
 
@@ -164,7 +167,7 @@ jobs:
       - name: Package (Linux, macOS)
         if: runner.os != 'Windows'
         run: |
-          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          v="$ORK_RELEASE_VERSION"
           mkdir -p pkg artifacts
           cp target/${{ matrix.target }}/release/ork LICENSE README.md pkg/
           tar -czf "artifacts/ork-$v-${{ matrix.target }}.tar.gz" -C pkg ork LICENSE README.md
@@ -172,7 +175,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $v = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $v = $env:ORK_RELEASE_VERSION
           New-Item -ItemType Directory -Force pkg, artifacts | Out-Null
           Copy-Item target/${{ matrix.target }}/release/ork.exe, LICENSE, README.md pkg/
           Compress-Archive -Path pkg/* -DestinationPath "artifacts/ork-$v-${{ matrix.target }}.zip"
