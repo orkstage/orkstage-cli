@@ -1,5 +1,6 @@
 mod auth;
 mod operate;
+mod ops;
 mod project;
 mod template;
 mod up;
@@ -34,6 +35,11 @@ pub async fn run(cli: Cli, ctx: Ctx) -> Result<()> {
         Command::Status(sel) => operate::status(&ctx, sel).await,
         Command::Logs(args) => operate::logs(&ctx, args).await,
         Command::Destroy(args) => operate::destroy(&ctx, args).await,
+        Command::Preview(args) => ops::preview(&ctx, args).await,
+        Command::Upgrade(args) => ops::upgrade(&ctx, args).await,
+        Command::Incidents(cmd) => ops::incidents(&ctx, cmd).await,
+        Command::Triggers(cmd) => ops::triggers(&ctx, cmd).await,
+        Command::Marketplace(cmd) => ops::marketplace(&ctx, cmd).await,
         Command::Completions { shell } => {
             clap_complete::generate(shell, &mut Cli::command(), "ork", &mut std::io::stdout());
             Ok(())

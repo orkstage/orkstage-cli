@@ -93,7 +93,7 @@ pub async fn instances(ctx: &Ctx, cmd: InstancesCommand) -> Result<()> {
     Ok(())
 }
 
-fn selected_slug(ctx: &Ctx, sel: &InstanceSelector) -> Result<String> {
+pub(super) fn selected_slug(ctx: &Ctx, sel: &InstanceSelector) -> Result<String> {
     sel.instance.clone().or_else(|| ctx.project.as_ref().and_then(|p| p.config.instance.slug.clone())).ok_or_else(
         || {
             CliError::usage(
@@ -125,7 +125,7 @@ pub async fn deploy_slug(ctx: &Ctx, api: &ApiClient, slug: &str, wait: bool, tim
 }
 
 /// Polls events and status until the deployment reaches a terminal status.
-async fn follow(ctx: &Ctx, api: &ApiClient, id: &str, timeout: Duration) -> Result<Deployment> {
+pub(super) async fn follow(ctx: &Ctx, api: &ApiClient, id: &str, timeout: Duration) -> Result<Deployment> {
     let start = Instant::now();
     let mut after: Option<String> = None;
     let spinner = (!ctx.json() && ctx.interactive).then(|| {
@@ -195,7 +195,7 @@ async fn follow(ctx: &Ctx, api: &ApiClient, id: &str, timeout: Duration) -> Resu
     }
 }
 
-fn finish(ctx: &Ctx, d: Deployment) -> Result<()> {
+pub(super) fn finish(ctx: &Ctx, d: Deployment) -> Result<()> {
     if ctx.json() {
         output::print_json(&d);
     }

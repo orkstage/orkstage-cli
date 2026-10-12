@@ -22,6 +22,11 @@ The `ork` CLI is in **Preview**: commands and flags can still change between rel
 | `ork status [--instance SLUG]` | Shows the instance, its resources and the last deployment. |
 | `ork logs <resource> [--instance SLUG] [-n N]` | Shows recent log lines of a resource. |
 | `ork destroy --instance SLUG --confirm SLUG [--wait]` | Destroys an instance. |
+| `ork preview [--instance SLUG] [--template-version V]` | Shows the plan for the next deploy without applying it: the changes, their risk, the monthly cost and blocking issues. With `--template-version`, the plan of an upgrade or rollback to that published version. |
+| `ork upgrade [--instance SLUG] [--template-version V] [--yes] [--wait]` | Moves the instance to another published version of its template (default: the latest). Shows the plan first and asks for confirmation; resources the new version no longer has are deleted, and production changes that delete or replace resources wait for approval. |
+| `ork incidents list [--tenant] [--instance SLUG] [--all]` / `show ID` / `resolve ID [--message]` | Open incidents (all with `--all`), one incident with its timeline, or resolve one (needs `incidents:write`). |
+| `ork triggers list [--instance SLUG]` / `run NAME [--param KEY=VALUE]... [--wait]` | The template's triggers with whether they can run, or run one. API keys can run triggers whose template sets `on.webhook`. |
+| `ork marketplace list` / `show SLUG` | Published marketplace listings, or one with its slots, resources and estimated cost. Start a project from one with `ork init --from SLUG`. |
 | `ork completions <shell>` | Prints completions for `bash`, `zsh`, `fish`, `powershell` or `elvish`. |
 
 ## Global flags

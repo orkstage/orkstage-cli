@@ -91,6 +91,19 @@ pub enum Command {
     Logs(LogsArgs),
     /// Destroy an instance (asks for the slug as confirmation).
     Destroy(DestroyArgs),
+    /// Show the plan for the next deploy, or for an upgrade with --template-version, without applying it.
+    Preview(PreviewArgs),
+    /// Upgrade an instance to another published version of its template (shows the plan first).
+    Upgrade(UpgradeArgs),
+    /// Incidents of the instances you can see.
+    #[command(subcommand)]
+    Incidents(IncidentsCommand),
+    /// Triggers of an instance: actions declared in its template (restart, redeploy, backup, ...).
+    #[command(subcommand)]
+    Triggers(TriggersCommand),
+    /// Browse the template marketplace.
+    #[command(subcommand)]
+    Marketplace(MarketplaceCommand),
     /// Print shell completions.
     Completions {
         #[arg(value_enum)]
@@ -271,6 +284,89 @@ pub struct LogsArgs {
     /// Number of lines.
     #[arg(long, short = 'n', default_value_t = 50)]
     pub limit: u32,
+}
+
+#[derive(Debug, Args)]
+pub struct PreviewArgs {
+    #[command(flatten)]
+    pub selector: InstanceSelector,
+    /// Preview the change to this published template version (an upgrade or a rollback).
+    #[arg(long)]
+    pub template_version: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct UpgradeArgs {
+    #[command(flatten)]
+    pub selector: InstanceSelector,
+    /// Published version to move to (default: the latest published one).
+    #[arg(long)]
+    pub template_version: Option<String>,
+    /// Do not ask for confirmation (required when not running in a terminal).
+    #[arg(long, short = 'y')]
+    pub yes: bool,
+    /// Stream deployment events until it finishes; exit non-zero on failure.
+    #[arg(long, short = 'w')]
+    pub wait: bool,
+    #[arg(long, default_value_t = 3600)]
+    pub timeout: u64,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum IncidentsCommand {
+    /// List open incidents (all of them with --all).
+    List {
+        /// Only this tenant (slug or id).
+        #[arg(long)]
+        tenant: Option<String>,
+        /// Only this instance (slug).
+        #[arg(long, short = 'i')]
+        instance: Option<String>,
+        /// Include resolved incidents.
+        #[arg(long)]
+        all: bool,
+    },
+    /// Show an incident and its updates.
+    Show { id: String },
+    /// Resolve an incident (needs the incidents:write scope).
+    Resolve {
+        id: String,
+        /// Message for the incident timeline.
+        #[arg(long, default_value = "Resolved from the ork CLI.")]
+        message: String,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TriggersCommand {
+    /// List the triggers of an instance and whether they can run.
+    List(InstanceSelector),
+    /// Run a trigger (API keys can run triggers whose template sets on.webhook).
+    Run(TriggerRunArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct TriggerRunArgs {
+    /// Trigger name from the template.
+    pub name: String,
+    #[command(flatten)]
+    pub selector: InstanceSelector,
+    /// Parameter override, repeatable: --param key=value (only names the template marks overridable).
+    #[arg(long = "param", value_name = "KEY=VALUE")]
+    pub params: Vec<String>,
+    /// Wait until the run finishes; exit non-zero when it fails.
+    #[arg(long, short = 'w')]
+    pub wait: bool,
+    #[arg(long, default_value_t = 600)]
+    pub timeout: u64,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum MarketplaceCommand {
+    /// List the published listings.
+    List,
+    /// Show a listing: description, placements, resources and estimated cost.
+    Show { slug: String },
 }
 
 #[derive(Debug, Args)]
