@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Pulumi, Serverless Framework, Bicep and ARM: detected and partially mapped by type name.
 
 use std::sync::LazyLock;

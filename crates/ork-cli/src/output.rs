@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Tables for humans, JSON for machines. JSON goes to stdout, pretty-printed and stable.
 
 use comfy_table::presets::UTF8_BORDERS_ONLY;

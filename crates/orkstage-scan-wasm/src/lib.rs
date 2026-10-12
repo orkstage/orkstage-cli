@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! WebAssembly bindings for the OrkStage scan engine, published as `@orkstage/scan`.
 //!
 //! ```js

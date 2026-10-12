@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! CloudFormation, SAM and CDK synthesized templates (`cdk.out/*.template.json`).
 //! YAML short-form intrinsics are normalised by `crate::yaml` to their long form.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Small helpers over `serde_json::Value` and paths shared by every detector.
 
 use serde_json::{Map, Value};

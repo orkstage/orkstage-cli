@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Platform operations: import, instances, deploy (with event streaming), status, logs, destroy.
 
 use std::time::{Duration, Instant};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Internal evidence produced by detectors, before merging into `DetectedResource`s.
 
 use std::collections::{BTreeMap, BTreeSet};

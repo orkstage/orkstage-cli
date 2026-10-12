@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Thin client for the OrkStage REST API (`/api/v1`), authenticated with an API key.
 //! Errors keep the platform's `{ error: { code, message, correlationId } }`.
 

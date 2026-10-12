@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Command-line definition (clap derive).
 
 use std::path::PathBuf;

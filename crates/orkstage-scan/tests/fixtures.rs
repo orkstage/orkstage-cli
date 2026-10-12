@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Fixture projects per detector, with snapshot tests (`insta`) of the full ScanReport and
 //! targeted assertions for the behaviour the platform relies on.
 

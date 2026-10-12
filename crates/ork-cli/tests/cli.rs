@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Offline integration tests of the `ork` binary: scan, init, exit codes, credentials.
 
 use std::path::{Path, PathBuf};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `ork`: the OrkStage command line.
 
 mod api;

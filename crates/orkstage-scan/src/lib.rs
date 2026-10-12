@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # orkstage-scan
 //!
 //! Turns infrastructure-as-code and project files into an OrkStage **ScanReport** (v1, see

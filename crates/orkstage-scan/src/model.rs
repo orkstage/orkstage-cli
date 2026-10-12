@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! ScanReport v1, as specified in `docs/specs/integration-api.md`. Field names and enum
 //! spellings here are part of the wire contract with the platform.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Errors with stable exit codes: 0 ok, 1 failure, 2 usage, 3 auth, 4 not found.
 
 use miette::Diagnostic;

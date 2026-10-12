@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Day two operations: preview, upgrade, incidents, triggers and the marketplace.
 
 use std::time::{Duration, Instant};

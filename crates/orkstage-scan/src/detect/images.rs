@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! What a container image is: a backing service, a dev tool, or an application.
 
 use crate::model::ResourceType as RT;
