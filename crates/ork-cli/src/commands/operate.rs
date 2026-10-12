@@ -51,8 +51,8 @@ pub async fn import(ctx: &Ctx, args: ImportArgs) -> Result<()> {
 }
 
 pub async fn instances(ctx: &Ctx, cmd: InstancesCommand) -> Result<()> {
-    let tenant = match cmd {
-        InstancesCommand::List { tenant } => tenant,
+    let (tenant, all) = match cmd {
+        InstancesCommand::List { tenant, all } => (tenant, all),
         InstancesCommand::Create(args) => return super::up::create(ctx, args).await,
     };
     let api = client(ctx)?;
@@ -60,7 +60,10 @@ pub async fn instances(ctx: &Ctx, cmd: InstancesCommand) -> Result<()> {
         Some(t) => Some(api.resolve_tenant(&t).await?.id),
         None => None,
     };
-    let list = api.instances(tenant_id.as_deref()).await?;
+    let mut list = api.instances(tenant_id.as_deref()).await?;
+    if !all {
+        list.retain(|i| i.status != "DESTROYED");
+    }
     if ctx.json() {
         output::print_json(&list);
         return Ok(());
@@ -167,7 +170,11 @@ async fn follow(ctx: &Ctx, api: &ApiClient, id: &str, timeout: Duration) -> Resu
         }
         if d.status == "AWAITING_APPROVAL" && !announced_approval {
             announced_approval = true;
-            output::note(ctx, "Waiting for approval in the console…");
+            let place = ctx
+                .console_url()
+                .map(|c| format!("{c}/deployments/{id}"))
+                .unwrap_or_else(|| "the console (Deployments)".into());
+            output::note(ctx, &format!("Waiting for approval: approve or reject it in {place}."));
         }
         if is_terminal_status(&d.status) {
             if let Some(pb) = spinner {
@@ -195,6 +202,15 @@ fn finish(ctx: &Ctx, d: Deployment) -> Result<()> {
     if d.status == "SUCCEEDED" {
         output::note(ctx, &format!("Deployment {} succeeded.", d.id));
         Ok(())
+    } else if d.status == "CANCELLED" {
+        Err(CliError::failed(
+            format!("deployment {} was cancelled", d.id),
+            Some(if d.kind == "DESTROY" {
+                "the destroy did not run, so the instance keeps its resources".into()
+            } else {
+                "nothing more was applied; run `ork deploy` again when ready".into()
+            }),
+        ))
     } else {
         Err(CliError::failed(
             format!("deployment {} finished with status {}", d.id, d.status),
