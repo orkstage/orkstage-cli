@@ -1,8 +1,8 @@
 name: ci
 
 on:
+  # Merges to main are not built again (the pull request was); release tags are.
   push:
-    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -10,6 +10,11 @@ on:
 # macOS minutes bill at 10x and Windows at 2x on private repositories: pull requests and pushes
 # to main test on Linux only; the full OS matrix and the release builds run for version tags or
 # on demand (Actions > ci > Run workflow).
+# A new push to a pull request cancels its previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
