@@ -1,0 +1,42 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Weekly: new advisories against dependencies that did not change.
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Known vulnerabilities in the locked dependencies. Fails on critical ones that have a fix.
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Trivy (lockfiles)
+        run: >-
+          docker run --rm -v "$PWD:/src:ro" aquasec/trivy:0.57.1 fs --quiet --scanners vuln
+          --severity CRITICAL --ignore-unfixed --exit-code 1 --skip-dirs node_modules --skip-dirs target
+          --skip-dirs crates/orkstage-scan/tests/fixtures /src
+
+  # Code scanning and the OpenSSF Scorecard report through GitHub Advanced Security, which private
+  # repositories do not have here; these jobs start on their own once the repository is public.
+  codeql:
+    if: github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: rust
+          build-mode: none
+      - uses: github/codeql-action/analyze@v3
