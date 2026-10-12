@@ -7,7 +7,7 @@ use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::error::{CliError, Result};
 
@@ -58,17 +58,29 @@ impl ApiClient {
         body: Option<&Value>,
     ) -> Result<T> {
         let url = self.url(path);
-        debug!("{method} {url}");
-        let mut req =
-            self.http.request(method.clone(), &url).bearer_auth(&self.token).header("accept", "application/json");
-        if !query.is_empty() {
-            req = req.query(query);
-        }
-        if let Some(b) = body {
-            req = req.json(b);
-        }
-        let resp =
-            req.send().await.map_err(|e| CliError::Network { url: self.api_url.clone(), detail: e.to_string() })?;
+        let mut attempt = 0;
+        let resp = loop {
+            debug!("{method} {url}");
+            let mut req =
+                self.http.request(method.clone(), &url).bearer_auth(&self.token).header("accept", "application/json");
+            if !query.is_empty() {
+                req = req.query(query);
+            }
+            if let Some(b) = body {
+                req = req.json(b);
+            }
+            let resp =
+                req.send().await.map_err(|e| CliError::Network { url: self.api_url.clone(), detail: e.to_string() })?;
+            // Rate limited: the request was not processed, so sending it again is safe.
+            if resp.status() == StatusCode::TOO_MANY_REQUESTS && attempt < MAX_RETRIES {
+                let wait = retry_after(resp.headers()).unwrap_or(1 << attempt).min(MAX_RETRY_WAIT_SECONDS);
+                warn!("rate limited by the API on {method} {path}; retrying in {wait}s");
+                tokio::time::sleep(Duration::from_secs(wait)).await;
+                attempt += 1;
+                continue;
+            }
+            break resp;
+        };
         let status = resp.status();
         let header_correlation =
             resp.headers().get("x-correlation-id").and_then(|v| v.to_str().ok()).map(str::to_string);
@@ -105,6 +117,15 @@ impl ApiClient {
     }
 }
 
+/// Retries of a rate limited (429) request, and the longest wait honored from `Retry-After`.
+const MAX_RETRIES: u32 = 3;
+const MAX_RETRY_WAIT_SECONDS: u64 = 60;
+
+/// `Retry-After` in seconds (the HTTP date form is not used by the platform).
+pub fn retry_after(headers: &reqwest::header::HeaderMap) -> Option<u64> {
+    headers.get(reqwest::header::RETRY_AFTER)?.to_str().ok()?.trim().parse().ok()
+}
+
 fn api_error(
     status: StatusCode,
     method: &Method,
@@ -128,6 +149,7 @@ fn api_error(
         }
         404 => {}
         409 => help.push("another operation is in progress; retry when it finishes".into()),
+        429 => help.push("the API is rate limiting this key; wait a minute and retry".into()),
         _ => {}
     }
     if let Some(issues) = details.as_ref().and_then(|d| d.get("issues")).and_then(Value::as_array) {
@@ -322,5 +344,20 @@ impl ApiClient {
             Some(t) => Ok(Some(self.get(&format!("/templates/{}", t.id), &[]).await?)),
             None => Ok(None),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retry_after_seconds() {
+        let mut h = reqwest::header::HeaderMap::new();
+        assert_eq!(retry_after(&h), None);
+        h.insert(reqwest::header::RETRY_AFTER, "7".parse().unwrap());
+        assert_eq!(retry_after(&h), Some(7));
+        h.insert(reqwest::header::RETRY_AFTER, "Wed, 21 Oct 2026 07:28:00 GMT".parse().unwrap());
+        assert_eq!(retry_after(&h), None);
     }
 }

@@ -169,6 +169,68 @@ fn exit_codes_without_platform() {
     ork(cfg.path()).current_dir(empty.path()).args(["template", "push"]).assert().code(2);
 }
 
+/// A one-route HTTP server: the first `limited` requests get 429 (Retry-After: 0), then 200.
+fn rate_limited_api(limited: usize) -> (String, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let count = std::sync::Arc::new(AtomicUsize::new(0));
+    let seen = count.clone();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let mut stream = stream.unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut line = String::new();
+            while reader.read_line(&mut line).unwrap_or(0) > 0 && line != "\r\n" {
+                line.clear();
+            }
+            let n = seen.fetch_add(1, Ordering::SeqCst);
+            let response = if n < limited {
+                concat!(
+                    "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 0\r\nContent-Type: application/json\r\n",
+                    "Content-Length: 60\r\nConnection: close\r\n\r\n",
+                    r#"{"error":{"code":"THROTTLED","message":"Too many requests"}}"#
+                )
+            } else {
+                concat!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 12\r\n",
+                    "Connection: close\r\n\r\n",
+                    r#"{"items":[]}"#
+                )
+            };
+            let _ = stream.write_all(response.as_bytes());
+        }
+    });
+    (url, count)
+}
+
+#[test]
+fn rate_limited_requests_are_retried() {
+    use std::sync::atomic::Ordering;
+    let cfg = tempfile::tempdir().unwrap();
+    let empty = tempfile::tempdir().unwrap();
+    // Two 429s, then success: one command, three requests.
+    let (url, count) = rate_limited_api(2);
+    ork(cfg.path())
+        .current_dir(empty.path())
+        .env("ORK_TOKEN", "ork_test_00000000_abcdefghijklmnopqrstuvwxyz")
+        .args(["instances", "list", "--api-url", &url])
+        .assert()
+        .success();
+    assert_eq!(count.load(Ordering::SeqCst), 3);
+    // Still limited after three retries: fails with a hint, after four requests.
+    let (url, count) = rate_limited_api(usize::MAX);
+    ork(cfg.path())
+        .current_dir(empty.path())
+        .env("ORK_TOKEN", "ork_test_00000000_abcdefghijklmnopqrstuvwxyz")
+        .args(["instances", "list", "--api-url", &url])
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("rate limiting"));
+    assert_eq!(count.load(Ordering::SeqCst), 4);
+}
+
 #[test]
 fn init_in_an_empty_directory_writes_a_starter_template() {
     let cfg = tempfile::tempdir().unwrap();

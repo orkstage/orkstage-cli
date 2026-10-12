@@ -204,6 +204,9 @@ pub enum InstancesCommand {
         /// Only this tenant (slug or id).
         #[arg(long)]
         tenant: Option<String>,
+        /// Include destroyed instances.
+        #[arg(long)]
+        all: bool,
     },
     /// Create the instance described in .ork/config.toml ([instance], [placements], [variables]).
     Create(InstanceCreateArgs),
