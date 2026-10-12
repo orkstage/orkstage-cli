@@ -110,6 +110,12 @@ jobs:
           key: ${{ matrix.target }}
       - if: matrix.musl
         run: sudo apt-get update && sudo apt-get install -y musl-tools
+      # `ork --version` shows the commit and build date in release builds.
+      - name: Build info
+        shell: bash
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          echo "ORK_LONG_VERSION=$v (${GITHUB_SHA::7} $(date -u +%Y-%m-%d))" >> "$GITHUB_ENV"
       - run: cargo build --release --locked -p ork-cli --target ${{ matrix.target }}
 
       # Code signing. Unsigned binaries are blocked by application control on many Windows
@@ -154,10 +160,108 @@ jobs:
           ditto -c -k --keepParent "$BIN" ork.zip
           xcrun notarytool submit ork.zip --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
 
+      # Archives with the binary at the root, plus LICENSE and README (what the install scripts expect).
+      - name: Package (Linux, macOS)
+        if: runner.os != 'Windows'
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          mkdir -p pkg dist
+          cp target/${{ matrix.target }}/release/ork LICENSE README.md pkg/
+          tar -czf "dist/ork-$v-${{ matrix.target }}.tar.gz" -C pkg ork LICENSE README.md
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          New-Item -ItemType Directory -Force pkg, dist | Out-Null
+          Copy-Item target/${{ matrix.target }}/release/ork.exe, LICENSE, README.md pkg/
+          Compress-Archive -Path pkg/* -DestinationPath "dist/ork-$v-${{ matrix.target }}.zip"
       - uses: actions/upload-artifact@v6
         with:
           name: ork-${{ matrix.target }}
-          path: |
-            target/${{ matrix.target }}/release/ork
-            target/${{ matrix.target }}/release/ork.exe
+          path: dist/*
           if-no-files-found: error
+
+  # A version tag (v0.2.0, or v0.2.0-rc.1 for a prerelease) publishes a GitHub Release with every
+  # archive, the install scripts and SHA256SUMS.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: The tag matches the crate version
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          case "${GITHUB_REF_NAME#v}" in
+            "$v" | "$v"-*) ;;
+            *) echo "::error::tag $GITHUB_REF_NAME does not match version $v in Cargo.toml"; exit 1 ;;
+          esac
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: ork-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: |
+          cp ../scripts/install.sh ../scripts/install.ps1 .
+          sha256sum ork-* install.sh install.ps1 > SHA256SUMS
+          cat SHA256SUMS
+      # Attestations need a public repository (or GitHub Enterprise Cloud for private ones).
+      - if: github.event.repository.visibility == 'public'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/ork-*
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=""
+          case "$GITHUB_REF_NAME" in *-*) pre="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes --title "ork ${GITHUB_REF_NAME#v}" $pre
+
+  # Installs the release just published with both scripts on clean runners. The files are served
+  # from the runner itself, because a private repository's release cannot be downloaded anonymously.
+  install-test:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Download the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -D rel
+      - name: install.sh
+        if: runner.os != 'Windows'
+        env:
+          ORK_VERSION: ${{ github.ref_name }}
+          ORK_DOWNLOAD_BASE: http://127.0.0.1:8765
+          ORK_INSTALL_DIR: ${{ runner.temp }}/bin
+        run: |
+          (cd rel && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 3
+          sh rel/install.sh
+          "$ORK_INSTALL_DIR/ork" --version | tee /dev/stderr | grep -F "${GITHUB_REF_NAME#v}"
+      - name: install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          ORK_VERSION: ${{ github.ref_name }}
+          ORK_DOWNLOAD_BASE: http://127.0.0.1:8765
+          ORK_INSTALL_DIR: ${{ runner.temp }}\bin
+        run: |
+          Start-Process python -ArgumentList '-m', 'http.server', '8765' -WorkingDirectory rel -WindowStyle Hidden
+          Start-Sleep -Seconds 3
+          ./rel/install.ps1
+          $out = & "$env:ORK_INSTALL_DIR\ork.exe" --version
+          Write-Host $out
+          if ($out -notmatch [regex]::Escape($env:ORK_VERSION.TrimStart('v'))) { throw "unexpected version: $out" }

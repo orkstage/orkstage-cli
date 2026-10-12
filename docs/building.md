@@ -67,6 +67,38 @@ Windows binaries must be signed with Authenticode (for example Azure Trusted Sig
 `signtool` with an EV certificate), because machines with application control refuse unsigned
 executables. macOS binaries must be signed with a Developer ID (`codesign --options runtime`) and
 notarized (`xcrun notarytool submit --wait`). The CI workflow has both steps; they run on tags
-when the signing secrets are configured.
+when the signing secrets are configured:
 
-No release has been published yet. Until then, build from source.
+| Secret | Used for |
+|---|---|
+| `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TRUSTED_SIGNING_ENDPOINT`, `AZURE_TRUSTED_SIGNING_ACCOUNT`, `AZURE_CERTIFICATE_PROFILE` | Windows, Azure Trusted Signing |
+| `MACOS_CERTIFICATE` (base64 .p12), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | macOS, signing and notarization |
+
+Without them a release is still published, unsigned, and the release notes should say so.
+
+## Releasing
+
+1. Set `version` in the workspace `Cargo.toml` and merge it to `main`.
+2. Tag that commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`. A tag with a
+   suffix (`v0.2.0-rc.1`) publishes a prerelease.
+3. CI builds every target, signs when it can, and the `release` job checks that the tag matches
+   `Cargo.toml`, writes `SHA256SUMS`, adds build provenance (public repositories), and creates the
+   GitHub Release with the archives and both install scripts.
+4. The `install-test` job then installs that release with `install.sh` on Linux and macOS and
+   `install.ps1` on Windows, and checks `ork --version`.
+
+Archives are named `ork-<version>-<target>.tar.gz` (`.zip` on Windows) and hold the binary, the
+license and the README. Release builds report the commit and build date in `ork --version`.
+
+## Install scripts
+
+[`scripts/install.sh`](../scripts/install.sh) (Linux, macOS) and
+[`scripts/install.ps1`](../scripts/install.ps1) (Windows) download the archive for the machine,
+verify it against `SHA256SUMS`, and install it without administrator rights (`~/.local/bin`, or
+`%LOCALAPPDATA%\Programs\ork`, added to the user PATH). `orkstage.io/install.sh` and
+`orkstage.io/install.ps1` redirect to the copies attached to the latest release. Settings:
+`ORK_VERSION`, `ORK_INSTALL_DIR` and `ORK_DOWNLOAD_BASE` (a mirror with the archive and
+`SHA256SUMS` side by side).
+
+While the repository is private, anonymous downloads fail: use
+`gh release download -R orkstage/orkstage-cli` and point `ORK_DOWNLOAD_BASE` at a local copy.
