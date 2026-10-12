@@ -252,8 +252,8 @@ jobs:
           ORK_DOWNLOAD_BASE: http://127.0.0.1:8765
           ORK_INSTALL_DIR: ${{ runner.temp }}/bin
         run: |
-          (cd rel && python3 -m http.server 8765 >/dev/null 2>&1 &)
-          sleep 3
+          (cd rel && python3 -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &)
+          for _ in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8765/SHA256SUMS && break; sleep 1; done
           sh rel/install.sh
           "$ORK_INSTALL_DIR/ork" --version | tee /dev/stderr | grep -F "${GITHUB_REF_NAME#v}"
       - name: install.ps1
@@ -264,8 +264,8 @@ jobs:
           ORK_DOWNLOAD_BASE: http://127.0.0.1:8765
           ORK_INSTALL_DIR: ${{ runner.temp }}\bin
         run: |
-          Start-Process python -ArgumentList '-m', 'http.server', '8765' -WorkingDirectory rel -WindowStyle Hidden
-          Start-Sleep -Seconds 3
+          Start-Process python -ArgumentList '-m', 'http.server', '8765', '--bind', '127.0.0.1' -WorkingDirectory rel -WindowStyle Hidden
+          foreach ($i in 1..30) { try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8765/SHA256SUMS | Out-Null; break } catch { Start-Sleep -Seconds 1 } }
           ./rel/install.ps1
           $out = & "$env:ORK_INSTALL_DIR\ork.exe" --version
           Write-Host $out
