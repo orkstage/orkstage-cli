@@ -165,21 +165,22 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-          mkdir -p pkg dist
+          mkdir -p pkg artifacts
           cp target/${{ matrix.target }}/release/ork LICENSE README.md pkg/
-          tar -czf "dist/ork-$v-${{ matrix.target }}.tar.gz" -C pkg ork LICENSE README.md
+          tar -czf "artifacts/ork-$v-${{ matrix.target }}.tar.gz" -C pkg ork LICENSE README.md
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $v = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
-          New-Item -ItemType Directory -Force pkg, dist | Out-Null
+          New-Item -ItemType Directory -Force pkg, artifacts | Out-Null
           Copy-Item target/${{ matrix.target }}/release/ork.exe, LICENSE, README.md pkg/
-          Compress-Archive -Path pkg/* -DestinationPath "dist/ork-$v-${{ matrix.target }}.zip"
+          Compress-Archive -Path pkg/* -DestinationPath "artifacts/ork-$v-${{ matrix.target }}.zip"
       - uses: actions/upload-artifact@v6
         with:
           name: ork-${{ matrix.target }}
-          path: dist/*
+          # Not dist/: that directory is in the repository (dist/scan-wasm).
+          path: artifacts/*
           if-no-files-found: error
 
   # A version tag (v0.2.0, or v0.2.0-rc.1 for a prerelease) publishes a GitHub Release with every
