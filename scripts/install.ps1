@@ -3,7 +3,8 @@
 #   irm https://orkstage.io/install.ps1 | iex
 #
 # Environment:
-#   ORK_VERSION        version to install, for example 0.2.0 (default: the latest release)
+#   ORK_VERSION        version to install, for example 0.2.0 (default: the latest release, or the
+#                      newest prerelease while there is no stable one)
 #   ORK_INSTALL_DIR    where to put ork.exe (default: %LOCALAPPDATA%\Programs\ork)
 #   ORK_DOWNLOAD_BASE  where the release files are (default: the GitHub release of ORK_VERSION);
 #                      a mirror must serve the archive and SHA256SUMS side by side
@@ -25,8 +26,13 @@ $target = "$arch-pc-windows-msvc"
 
 $version = $env:ORK_VERSION
 if (-not $version) {
-  $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers @{ 'User-Agent' = 'ork-installer' }
-  $version = $latest.tag_name
+  # The newest stable release; while there is none, the newest prerelease.
+  $headers = @{ 'User-Agent' = 'ork-installer' }
+  try {
+    $version = (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $headers).tag_name
+  } catch {
+    $version = (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=1" -Headers $headers)[0].tag_name
+  }
 }
 $version = $version.TrimStart('v')
 if (-not $version -or $version.Contains('/')) { throw 'Cannot tell the version to install (set ORK_VERSION)' }

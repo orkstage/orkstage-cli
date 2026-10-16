@@ -96,9 +96,8 @@ license and the README. Release builds report the commit and build date in `ork 
 [`scripts/install.ps1`](../scripts/install.ps1) (Windows) download the archive for the machine,
 verify it against `SHA256SUMS`, and install it without administrator rights (`~/.local/bin`, or
 `%LOCALAPPDATA%\Programs\ork`, added to the user PATH). `orkstage.io/install.sh` and
-`orkstage.io/install.ps1` redirect to the copies attached to the latest release. Settings:
+`orkstage.io/install.ps1` redirect to the scripts on `main`, which install the latest release (the
+newest prerelease while there is no stable one). Settings:
 `ORK_VERSION`, `ORK_INSTALL_DIR` and `ORK_DOWNLOAD_BASE` (a mirror with the archive and
 `SHA256SUMS` side by side).
 
-While the repository is private, anonymous downloads fail: use
-`gh release download -R orkstage/orkstage-cli` and point `ORK_DOWNLOAD_BASE` at a local copy.
