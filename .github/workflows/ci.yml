@@ -1,14 +1,12 @@
 name: ci
 
 on:
-  # Release tags are built too.
+  # Public repository: Actions minutes are free, so every push to main and every pull request is
+  # built, plus a weekly run that keeps caches warm.
   push:
+    branches: [main]
     tags: ['v*']
-  # Pull requests are built; merges to main are not built again. Pull requests that only change
-  # Markdown or docs/ skip CI. A weekly run on main scans for secrets and refreshes the caches that
-  # pull requests restore (a pull request can only reuse caches saved on main).
   pull_request:
-    paths-ignore: ['**/*.md', 'docs/**']
   schedule:
     - cron: '23 5 * * 1'
   workflow_dispatch:
@@ -86,6 +84,13 @@ jobs:
       - run: sh scripts/build-wasm.sh
       - name: The committed WebAssembly package is up to date
         run: git diff --exit-code -- dist/scan-wasm
+      # When it is not, CI's own build is kept for a day: download it and commit it to fix the check.
+      - if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: scan-wasm
+          path: dist/scan-wasm
+          retention-days: 1
       - uses: actions/setup-node@v6
         with:
           node-version: 22
