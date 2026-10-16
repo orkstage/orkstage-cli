@@ -74,7 +74,8 @@ when the signing secrets are configured:
 | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TRUSTED_SIGNING_ENDPOINT`, `AZURE_TRUSTED_SIGNING_ACCOUNT`, `AZURE_CERTIFICATE_PROFILE` | Windows, Azure Trusted Signing |
 | `MACOS_CERTIFICATE` (base64 .p12), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | macOS, signing and notarization |
 
-Without them a release is still published, unsigned, and the release notes should say so.
+Without them a release is still published, unsigned, and the release notes should say so. How to get the certificates and fill
+every secret: [signing.md](signing.md).
 
 ## Releasing
 
