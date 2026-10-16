@@ -50,8 +50,8 @@ pub fn starter_template(name: &str) -> String {
          apiVersion: platform/v1\n\
          kind: EnvironmentTemplate\n\
          metadata:\n  name: {name}\n  version: 0.1.0\n  displayName: {display}\n  \
-         description: \"Starter: one network and one web service.\"\n  profile: starter\n\
-         spec:\n  plans: [STARTER, GROWTH]\n  placements:\n    - name: primary\n      \
+         description: \"Starter: one network and one web service.\"\n  tags: [starter]\n\
+         spec:\n  placements:\n    - name: primary\n      \
          description: \"Bind any cloud target.\"\n  resources:\n    - id: network\n      type: network\n    \
          - id: web\n      type: compute.container-service\n      image: catalog://sample-api\n      port: 8080\n"
     )

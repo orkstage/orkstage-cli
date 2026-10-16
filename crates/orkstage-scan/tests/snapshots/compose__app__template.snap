@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Compose app
   description: "Imported by orkstage-scan from compose (1), dockerfile (2), package (2)."
-  profile: starter
+  tags: [starter, containers, postgres, redis, queue, object storage]
 spec:
-  plans: [STARTER, GROWTH]
   placements:
     - name: primary
       description: "Everything detected; no cloud provider was evident, bind any target."

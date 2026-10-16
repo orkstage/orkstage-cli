@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Kubernetes manifests
   description: Imported by orkstage-scan from kubernetes (2).
-  profile: scale
+  tags: [scale, containers, postgres, redis]
 spec:
-  plans: [SCALE]
   placements:
     - name: primary
       description: "Everything detected; no cloud provider was evident, bind any target."

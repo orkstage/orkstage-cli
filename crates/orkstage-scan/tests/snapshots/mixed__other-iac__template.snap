@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Mixed other iac
   description: "Imported by orkstage-scan from serverless (1), pulumi (2), bicep (1), arm (1)."
-  profile: growth
+  tags: [growth, containers, postgres, redis, queue, object storage, multicloud]
 spec:
-  plans: [GROWTH, SCALE]
   placements:
     - name: primary
       description: Application runtime and everything detected on aws.
