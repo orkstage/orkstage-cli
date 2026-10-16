@@ -188,9 +188,9 @@ pub struct TemplateFileArgs {
     /// Template file (default: .ork/template.yaml).
     #[arg(long, short = 'f')]
     pub file: Option<PathBuf>,
-    /// Also check against a plan's entitlements.
-    #[arg(long, value_parser = ["FREE", "SANDBOX", "STARTER", "GROWTH", "SCALE"])]
-    pub plan: Option<String>,
+    /// Also check a tenant's limits and feature flags (slug, name or id).
+    #[arg(long)]
+    pub tenant: Option<String>,
 }
 
 #[derive(Debug, Args)]

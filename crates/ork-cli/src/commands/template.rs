@@ -113,8 +113,8 @@ pub async fn validate(ctx: &Ctx, args: TemplateFileArgs) -> Result<()> {
     let source = read(&path)?;
     let api = client(ctx)?;
     let mut body = json!({ "source": source });
-    if let Some(p) = &args.plan {
-        body["planCode"] = json!(p);
+    if let Some(wanted) = &args.tenant {
+        body["tenantId"] = json!(api.resolve_tenant(wanted).await?.id);
     }
     let report: Value = api.post("/templates/validate", &body).await?;
     let valid = report.get("valid").and_then(Value::as_bool).unwrap_or(false);
