@@ -31,12 +31,8 @@ fn plan(ctx: &Ctx, args: &InstanceCreateArgs) -> Result<Plan> {
     let slug = cfg.instance.slug.clone().ok_or_else(|| missing("[instance].slug", "set it in .ork/config.toml"))?;
     let tenant = ctx.tenant().ok_or_else(|| missing("tenant", "set `tenant` in .ork/config.toml"))?;
     let template = cfg.template.name.clone().ok_or_else(|| missing("[template].name", "set it in .ork/config.toml"))?;
-    if cfg.placements.is_empty() {
-        return Err(CliError::usage(
-            "[placements] is empty",
-            Some("add one line per placement slot: `slot = { target = \"name or id\", region = \"...\" }`".into()),
-        ));
-    }
+    // Slots missing from [placements] are bound by the platform to the default cloud target of the
+    // instance's environment; the API names any slot that has no default.
     let mut variables = Map::new();
     for (k, v) in &cfg.variables {
         variables.insert(k.clone(), toml_value(k, v)?);

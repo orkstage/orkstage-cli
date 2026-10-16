@@ -257,7 +257,7 @@ pub fn render_project_config(c: &ProjectConfig) -> String {
         out.push_str(&format!("environment = {}\n", q(e)));
     }
     out.push_str(
-        "\n# Placement slot → cloud target (name or id) and region, one line per slot of the template.\n[placements]\n",
+        "\n# Placement slot → cloud target (name or id) and region, one line per slot of the template.\n# A slot left out uses the default cloud target of the instance's environment.\n[placements]\n",
     );
     for (slot, b) in &c.placements {
         out.push_str(&format!("{slot} = {{ target = {}, region = {} }}\n", q(&b.target), q(&b.region)));
