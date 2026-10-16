@@ -4,7 +4,8 @@
 #   curl -fsSL https://orkstage.io/install.sh | sh
 #
 # Environment:
-#   ORK_VERSION        version to install, for example 0.2.0 (default: the latest release)
+#   ORK_VERSION        version to install, for example 0.2.0 (default: the latest release, or the
+#                      newest prerelease while there is no stable one)
 #   ORK_INSTALL_DIR    where to put the binary (default: $HOME/.local/bin)
 #   ORK_DOWNLOAD_BASE  where the release files are (default: the GitHub release of ORK_VERSION);
 #                      a mirror must serve the archive and SHA256SUMS side by side
@@ -37,10 +38,15 @@ target="$arch-$os"
 
 version="${ORK_VERSION:-}"
 if [ -z "$version" ]; then
-  # The latest release URL redirects to .../releases/tag/v<version>.
-  url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest") ||
-    fail "cannot find the latest release of $REPO"
-  version="${url##*/v}"
+  # The newest stable release (its URL redirects to .../releases/tag/v<version>); while there is
+  # none, the newest prerelease.
+  url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" 2>/dev/null || true)
+  case "$url" in
+    */releases/tag/v*) version="${url##*/v}" ;;
+    *) version=$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=1" |
+      sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1) ;;
+  esac
+  [ -n "$version" ] || fail "cannot find a release of $REPO"
 fi
 version="${version#v}"
 case "$version" in
