@@ -10,7 +10,7 @@ The `ork` CLI is in **Preview**: commands and flags can still change between rel
 | `ork logout` / `ork whoami` | Forgets the key, or shows the user, key name, scopes and tenants. |
 | `ork init [--name] [--tenant] [--environment] [--from SLUG] [--yes] [--force] [PATH]` | Scans the project and creates `.ork/`. Interactive unless `--yes` is set or stdin is not a TTY. When nothing deployable is detected, the template is a starter (one network and one web service). `--from` starts from a marketplace template instead, renamed to the project at version 0.1.0, with one `[placements]` line per slot. |
 | `ork scan [PATH] [--format table\|json] [--write]` | Walks and scans in parallel. `PATH` can be a directory or a single file. `--write` refreshes `.ork/inventory.json` and `.ork/template.yaml`. |
-| `ork template validate [-f FILE] [--plan CODE]` | Calls `POST /templates/validate` and exits with 1 when the template is invalid. |
+| `ork template validate [-f FILE] [--tenant SLUG]` | Calls `POST /templates/validate` and exits with 1 when the template is invalid. With `--tenant`, also checks that tenant's limits and feature flags. |
 | `ork template push [-f FILE]` | Creates the template, or adds a DRAFT version. When the local version is not newer than the server's, it bumps the patch version and updates the file. |
 | `ork template diff [-f FILE] [--exit-code]` | Unified diff between the local template and the latest version on the server. |
 | `ork template publish [-f FILE] [--template-version V]` | Publishes a DRAFT version (default: `metadata.version` of the local file) so instances can use it. The server validates it again. Needs permission to publish templates. |

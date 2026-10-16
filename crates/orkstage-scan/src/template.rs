@@ -289,8 +289,8 @@ pub(crate) fn render(m: &Merged, meta: &Meta<'_>) -> Rendered {
     Rendered { yaml, document, issues }
 }
 
-/// Default plan limits, mirroring `DEFAULT_ENTITLEMENTS` in `packages/domain/src/plans.ts`. They
-/// only choose the size tag now: templates no longer declare plans (ADR 0007 in orkstage).
+/// The sizes behind the `starter`, `growth` and `scale` tags: the limits the plans of those names
+/// had before ADR 0007 in orkstage replaced plans with tenant limits. They only choose the tag.
 struct PlanLimits {
     code: &'static str,
     services: f64,

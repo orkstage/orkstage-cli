@@ -24,8 +24,9 @@ detected and reported.
    `aws_db_instance` become one `database.postgresql` on AWS.
 4. **Infer.** A network is added when services or data stores need one, and an ingress with DNS
    when a public HTTP service runs on a cloud provider. Placement slots are chosen (`primary` for
-   the compute provider; `data`, `storage` or `messaging` for the others), along with the
-   smallest plan whose default entitlements fit.
+   the compute provider; `data`, `storage` or `messaging` for the others), and tags are suggested:
+   the size of the smallest default plan the template fits (`starter`, `growth`, `scale`) and
+   what the sources contain.
 5. **Render and validate** the template: ids, references, ranges and dependency cycles (stages
    1 and 2 of the platform's validation). Problems become `warnings`; a scan never fails on bad
    input.
