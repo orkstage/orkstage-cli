@@ -60,7 +60,7 @@ Or build and install from source (Rust 1.88 or later):
 ```sh
 git clone https://github.com/orkstage/orkstage-cli.git
 cd orkstage-cli
-cargo install --path crates/ork-cli --locked
+cargo install --path crates/ork-cli --locked     # or, from crates.io: cargo install orkstage-cli
 ork --version
 ```
 
