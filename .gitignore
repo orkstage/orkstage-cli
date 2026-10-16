@@ -4,3 +4,40 @@
 # dist/scan-wasm is committed on purpose (the platform depends on it by path).
 # IDE/Gradle caches created when editors import the Kotlin fixture
 .gradle/
+
+# Never committed (no Git LFS in this organization): secrets, archives, binaries, media,
+# databases, local environments and caches.
+.env
+.env.*
+!.env.example
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.exe
+*.dll
+*.so
+*.dylib
+*.msi
+*.dmg
+*.iso
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.mp3
+*.wav
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.log
+.venv/
+venv/
+__pycache__/
+.cache/
+coverage/
+.DS_Store
+Thumbs.db
