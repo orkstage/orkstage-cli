@@ -1,6 +1,13 @@
 [package]
 name = "orkstage-scan"
 description = "OrkStage scan engine: turns IaC and project files into a ScanReport and a platform/v1 template"
+documentation = "https://docs.rs/orkstage-scan"
+homepage.workspace = true
+readme = "README.md"
+keywords = ["iac", "terraform", "kubernetes", "scanner", "devops"]
+categories = ["development-tools", "parser-implementations"]
+# Test fixtures and benchmarks stay in the repository; the published crate is the library.
+exclude = ["tests/", "benches/"]
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

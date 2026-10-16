@@ -138,7 +138,7 @@ jobs:
           case "$GITHUB_REF" in refs/tags/v*) v="${GITHUB_REF_NAME#v}" ;; esac
           echo "ORK_RELEASE_VERSION=$v" >> "$GITHUB_ENV"
           echo "ORK_LONG_VERSION=$v (${GITHUB_SHA::7} $(date -u +%Y-%m-%d))" >> "$GITHUB_ENV"
-      - run: cargo build --release --locked -p ork-cli --target ${{ matrix.target }}
+      - run: cargo build --release --locked -p orkstage-cli --target ${{ matrix.target }}
 
       # Code signing. Unsigned binaries are blocked by application control on many Windows
       # machines and by Gatekeeper on macOS, so releases must be signed.

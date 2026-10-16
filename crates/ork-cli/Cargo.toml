@@ -1,6 +1,12 @@
 [package]
-name = "ork-cli"
-description = "ork: the OrkStage command line"
+# Published on crates.io as `orkstage-cli` (`cargo install orkstage-cli`); the binary is `ork`.
+name = "orkstage-cli"
+description = "The ork command line for OrkStage: scan a project into a template, push it, deploy and operate cloud environments"
+documentation = "https://orkstage.io/docs/developer/cli/"
+homepage.workspace = true
+readme = "../../README.md"
+keywords = ["cli", "devops", "infrastructure", "opentofu", "multicloud"]
+categories = ["command-line-utilities", "development-tools"]
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

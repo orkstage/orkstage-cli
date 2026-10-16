@@ -27,7 +27,7 @@ $RUN cargo fmt --all --check
 $RUN cargo clippy --workspace --all-targets -- -D warnings
 $RUN cargo test --workspace
 $RUN cargo bench -p orkstage-scan --bench scan          # synthetic repository of about 2,000 files
-$RUN cargo build --release -p ork-cli                    # target/release/ork (Linux)
+$RUN cargo build --release -p orkstage-cli                    # target/release/ork (Linux)
 $RUN sh scripts/build-wasm.sh                            # regenerates dist/scan-wasm/
 ```
 
@@ -89,6 +89,15 @@ Without them a release is still published, unsigned, and the release notes shoul
 
 Archives are named `ork-<version>-<target>.tar.gz` (`.zip` on Windows) and hold the binary, the
 license and the README. Release builds report the commit and build date in `ork --version`.
+
+## crates.io
+
+A stable version tag (`v0.2.0`, not `v0.2.0-rc.1`) also runs `publish.yml`, which publishes
+`orkstage-scan` and then `orkstage-cli` to crates.io, so that `cargo install orkstage-cli` installs
+the `ork` binary. It needs the `CARGO_REGISTRY_TOKEN` repository secret: a crates.io API token
+(crates.io > Account settings > API tokens) with the `publish-new` and `publish-update` scopes,
+limited to these two crates once they exist. A version already on crates.io is skipped, so the job
+can be rerun. Run it by hand with "dry-run" to package and verify without uploading.
 
 ## Install scripts
 
