@@ -219,6 +219,9 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The release notes need the history since the last release.
+          fetch-depth: 0
       - name: The tag matches the crate version
         run: |
           v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
@@ -243,13 +246,24 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: out/ork-*
+      # Release notes from cliff.toml, like CHANGELOG.md (a release candidate gets the changes since
+      # the last release).
+      - uses: orhun/git-cliff-action@v4.9.1
+        with:
+          version: v2.14.2
+          config: cliff.toml
+          args: --current --strip all
+        env:
+          OUTPUT: NOTES.md
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The release title already names the version: drop the section heading.
+          sed -i '1{/^## /d}' NOTES.md
           pre=""
           case "$GITHUB_REF_NAME" in *-*) pre="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" out/* --verify-tag --generate-notes --title "ork ${GITHUB_REF_NAME#v}" $pre
+          gh release create "$GITHUB_REF_NAME" out/* --verify-tag --notes-file NOTES.md --title "ork ${GITHUB_REF_NAME#v}" $pre
 
   # Installs the release just published with both scripts on clean runners. The files are served
   # from the runner itself, because a private repository's release cannot be downloaded anonymously.
