@@ -86,12 +86,12 @@ jobs:
         run: git diff --exit-code -- dist/scan-wasm
       # When it is not, CI's own build is kept for a day: download it and commit it to fix the check.
       - if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: scan-wasm
           path: dist/scan-wasm
           retention-days: 1
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Smoke test the npm package
@@ -198,7 +198,7 @@ jobs:
           New-Item -ItemType Directory -Force pkg, artifacts | Out-Null
           Copy-Item target/${{ matrix.target }}/release/ork.exe, LICENSE, README.md pkg/
           Compress-Archive -Path pkg/* -DestinationPath "artifacts/ork-$v-${{ matrix.target }}.zip"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: ork-${{ matrix.target }}
           # Not dist/: that directory is in the repository (dist/scan-wasm).
@@ -226,7 +226,7 @@ jobs:
             "$v" | "$v"-*) ;;
             *) echo "::error::tag $GITHUB_REF_NAME does not match version $v in Cargo.toml"; exit 1 ;;
           esac
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           pattern: ork-*
           # Not dist/: that directory is in the repository (dist/scan-wasm).
@@ -240,7 +240,7 @@ jobs:
           cat SHA256SUMS
       # Attestations need a public repository (or GitHub Enterprise Cloud for private ones).
       - if: github.event.repository.visibility == 'public'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: out/ork-*
       - name: Create the release
