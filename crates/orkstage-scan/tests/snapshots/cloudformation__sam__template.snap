@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Cloudformation sam
   description: Imported by orkstage-scan from sam (1).
-  profile: starter
+  tags: [starter, queue, object storage]
 spec:
-  plans: [STARTER, GROWTH]
   placements:
     - name: primary
       description: Application runtime and everything detected on aws.

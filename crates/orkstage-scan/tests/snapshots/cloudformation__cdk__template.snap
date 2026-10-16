@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Cloudformation cdk
   description: Imported by orkstage-scan from cdk (1).
-  profile: starter
+  tags: [starter, postgres, queue]
 spec:
-  plans: [STARTER, GROWTH]
   placements:
     - name: primary
       description: Application runtime and everything detected on aws.

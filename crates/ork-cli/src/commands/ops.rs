@@ -319,7 +319,7 @@ pub async fn marketplace(ctx: &Ctx, cmd: MarketplaceCommand) -> Result<()> {
                 output::print_json(&list);
                 return Ok(());
             }
-            let mut t = output::table(ctx, &["SLUG", "TITLE", "BADGES", "PROVIDERS", "PLANS", "RESOURCES"]);
+            let mut t = output::table(ctx, &["SLUG", "TITLE", "BADGES", "PROVIDERS", "TAGS", "RESOURCES"]);
             let join = |v: &Value| {
                 v.as_array()
                     .map(|a| a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(", "))
@@ -331,7 +331,7 @@ pub async fn marketplace(ctx: &Ctx, cmd: MarketplaceCommand) -> Result<()> {
                     comfy_table::Cell::new(text(l, "title")),
                     comfy_table::Cell::new(join(&l["badges"])),
                     comfy_table::Cell::new(join(&l["providers"])),
-                    comfy_table::Cell::new(join(&l["plans"])),
+                    comfy_table::Cell::new(join(&l["tags"])),
                     comfy_table::Cell::new(l["resourceCount"].to_string()),
                 ]);
             }

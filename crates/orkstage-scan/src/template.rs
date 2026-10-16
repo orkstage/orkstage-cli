@@ -184,7 +184,7 @@ fn comment_for(f: &Final) -> String {
 pub(crate) fn render(m: &Merged, meta: &Meta<'_>) -> Rendered {
     let docs: Vec<Value> = m.resources.iter().map(resource_doc).collect();
     let multi_cloud = m.placements.iter().filter(|p| !p.providers.is_empty()).count() > 1;
-    let (profile, plans) = choose_plan(&docs, multi_cloud);
+    let tags = suggest_tags(&docs, multi_cloud);
     let sources: Vec<String> = meta.kinds.iter().map(|(k, n)| format!("{} ({n})", k.as_str())).collect();
     let description = if sources.is_empty() {
         "Imported by orkstage-scan.".to_string()
@@ -252,7 +252,6 @@ pub(crate) fn render(m: &Merged, meta: &Meta<'_>) -> Rendered {
         .collect();
 
     let mut spec = Map::new();
-    spec.insert("plans".into(), plans);
     spec.insert("placements".into(), Value::Array(placements));
     if !variables.is_empty() {
         spec.insert("variables".into(), Value::Array(variables));
@@ -273,7 +272,7 @@ pub(crate) fn render(m: &Merged, meta: &Meta<'_>) -> Rendered {
             "version": meta.version,
             "displayName": meta.display_name,
             "description": description,
-            "profile": profile,
+            "tags": tags,
         },
         "spec": Value::Object(spec),
     });
@@ -290,7 +289,8 @@ pub(crate) fn render(m: &Merged, meta: &Meta<'_>) -> Rendered {
     Rendered { yaml, document, issues }
 }
 
-/// Default plan limits, mirroring `DEFAULT_ENTITLEMENTS` in `packages/domain/src/plans.ts`.
+/// Default plan limits, mirroring `DEFAULT_ENTITLEMENTS` in `packages/domain/src/plans.ts`. They
+/// only choose the size tag now: templates no longer declare plans (ADR 0007 in orkstage).
 struct PlanLimits {
     code: &'static str,
     services: f64,
@@ -339,8 +339,9 @@ const PLANS: [PlanLimits; 3] = [
     },
 ];
 
-/// The smallest plan whose default entitlements fit the template, plus the next one up.
-fn choose_plan(resources: &[Value], multi_cloud: bool) -> (&'static str, Value) {
+/// Tags for the generated template (ADR 0007): the size of the smallest default plan it fits
+/// (`starter`, `growth` or `scale`), then what the sources contain.
+fn suggest_tags(resources: &[Value], multi_cloud: bool) -> Value {
     let (mut services, mut cpu, mut mem, mut db, mut replicas, mut backup) = (0.0, 0.0, 0.0, 0.0, 0.0_f64, 0.0_f64);
     let mut autoscaling = false;
     for r in resources {
@@ -373,13 +374,27 @@ fn choose_plan(resources: &[Value], multi_cloud: bool) -> (&'static str, Value) 
             && (!multi_cloud || p.multi_cloud)
     };
     let idx = PLANS.iter().position(fits).unwrap_or(PLANS.len() - 1);
-    let profile = match PLANS[idx].code {
+    let mut tags = vec![match PLANS[idx].code {
         "STARTER" => "starter",
         "GROWTH" => "growth",
         _ => "scale",
-    };
-    let plans: Vec<&str> = PLANS[idx..].iter().take(2).map(|p| p.code).collect();
-    (profile, json!(plans))
+    }];
+    let has = |t: &str| resources.iter().any(|r| r["type"].as_str() == Some(t));
+    for (resource, tag) in [
+        ("compute.container-service", "containers"),
+        ("database.postgresql", "postgres"),
+        ("cache.redis", "redis"),
+        ("queue", "queue"),
+        ("object-storage", "object storage"),
+    ] {
+        if has(resource) {
+            tags.push(tag);
+        }
+    }
+    if multi_cloud {
+        tags.push("multicloud");
+    }
+    json!(tags)
 }
 
 fn var_name(id: &str, suffix: &str) -> String {

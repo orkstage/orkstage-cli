@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Packages polyglot
   description: Imported by orkstage-scan from package (9).
-  profile: starter
+  tags: [starter, postgres, redis, queue, object storage]
 spec:
-  plans: [STARTER, GROWTH]
   placements:
     - name: primary
       description: "Everything detected; no cloud provider was evident, bind any target."

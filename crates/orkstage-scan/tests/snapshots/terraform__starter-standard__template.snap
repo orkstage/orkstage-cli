@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Terraform starter standard
   description: Imported by orkstage-scan from terraform (1).
-  profile: starter
+  tags: [starter, containers, postgres, redis, queue]
 spec:
-  plans: [STARTER, GROWTH]
   placements:
     - name: primary
       description: Application runtime and everything detected on aws.

@@ -10,9 +10,8 @@ metadata:
   version: 0.1.0
   displayName: Mixed multicloud
   description: Imported by orkstage-scan from terraform (3).
-  profile: growth
+  tags: [growth, containers, postgres, object storage, multicloud]
 spec:
-  plans: [GROWTH, SCALE]
   placements:
     - name: primary
       description: Application runtime and everything detected on aws.
