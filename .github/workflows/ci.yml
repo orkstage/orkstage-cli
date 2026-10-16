@@ -84,6 +84,13 @@ jobs:
       - run: sh scripts/build-wasm.sh
       - name: The committed WebAssembly package is up to date
         run: git diff --exit-code -- dist/scan-wasm
+      # When it is not, CI's own build is kept for a day: download it and commit it to fix the check.
+      - if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: scan-wasm
+          path: dist/scan-wasm
+          retention-days: 1
       - uses: actions/setup-node@v6
         with:
           node-version: 22
