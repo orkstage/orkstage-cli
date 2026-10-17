@@ -1875,6 +1875,7 @@ dependencies = [
  "comfy-table",
  "dialoguer",
  "directories",
+ "getrandom 0.4.3",
  "ignore",
  "indicatif",
  "keyring",

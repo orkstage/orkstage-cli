@@ -27,7 +27,15 @@ The `ork` CLI is in **Preview**: commands and flags can still change between rel
 | `ork incidents list [--tenant] [--instance SLUG] [--all]` / `show ID` / `resolve ID [--message]` | Open incidents (all with `--all`), one incident with its timeline, or resolve one (needs `incidents:write`). |
 | `ork triggers list [--instance SLUG]` / `run NAME [--param KEY=VALUE]... [--wait]` | The template's triggers with whether they can run, or run one. API keys can run triggers whose template sets `on.webhook`. |
 | `ork marketplace list` / `show SLUG` | Published marketplace listings, or one with its slots, resources and estimated cost. Start a project from one with `ork init --from SLUG`. |
+| `ork targets list` | Cloud targets with provider, environment, regions, health and last validation. |
+| `ork targets add [--provider] [--name] [--environment] [--tenant] [--config KEY=VALUE ...] [--credential-ref REF] [--regions a,b] [--default-region] [--no-validate] [--yes]` | Registers a cloud target step by step: prompts for what is missing using the provider's form from `GET /cloud/providers`, prints the docs page that prepares the account, then validates the target and prints every check (exit 1 when one fails). Without a terminal, missing values are errors. |
+| `ork targets validate TARGET [--region]` | Runs the target's checks again (name or id). Exit 1 when one fails. |
+| `ork targets edit TARGET [--name] [--config KEY=VALUE ...] [--credential-ref] [--regions] [--default-region] [--max-concurrent]` | Rotates the role or the credential reference, changes regions or the DNS zone. `KEY=` removes a config key. The account and the state location are fixed. |
+| `ork targets external-id` | Prints a new random external id for an AWS deployment role. |
 | `ork completions <shell>` | Prints completions for `bash`, `zsh`, `fish`, `powershell` or `elvish`. |
+
+The `targets` commands need a platform API key (role PlatformAdmin) with the `targets:manage` and
+`instances:read` scopes.
 
 ## Global flags
 

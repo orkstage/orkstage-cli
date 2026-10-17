@@ -43,6 +43,8 @@ ignore = "0.4.24"
 dialoguer = { version = "0.12", default-features = false, features = ["password"] }
 similar = "3.2"
 url = "2.5"
+# OS randomness for AWS external ids (`ork targets external-id`); already in the lockfile.
+getrandom = "0.4"
 
 [dev-dependencies]
 assert_cmd = "2.0"
