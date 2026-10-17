@@ -20,6 +20,7 @@ struct Plan {
     environment: String,
     tenant: String,
     template: String,
+    profile: Option<String>,
     placements: BTreeMap<String, (String, String)>,
     variables: Map<String, Value>,
 }
@@ -31,8 +32,8 @@ fn plan(ctx: &Ctx, args: &InstanceCreateArgs) -> Result<Plan> {
     let slug = cfg.instance.slug.clone().ok_or_else(|| missing("[instance].slug", "set it in .ork/config.toml"))?;
     let tenant = ctx.tenant().ok_or_else(|| missing("tenant", "set `tenant` in .ork/config.toml"))?;
     let template = cfg.template.name.clone().ok_or_else(|| missing("[template].name", "set it in .ork/config.toml"))?;
-    // Slots missing from [placements] are bound by the platform to the default cloud target of the
-    // instance's environment; the API names any slot that has no default.
+    // Slots missing from [placements] are bound by the platform from [instance].profile, or from the
+    // default profile of the instance's environment; the API names any slot left without a target.
     let mut variables = Map::new();
     for (k, v) in &cfg.variables {
         variables.insert(k.clone(), toml_value(k, v)?);
@@ -52,6 +53,7 @@ fn plan(ctx: &Ctx, args: &InstanceCreateArgs) -> Result<Plan> {
         environment: cfg.instance.environment.clone().unwrap_or_else(|| "production".into()),
         tenant,
         template,
+        profile: cfg.instance.profile.clone(),
         placements: cfg.placements.iter().map(|(s, b)| (s.clone(), (b.target.clone(), b.region.clone()))).collect(),
         variables,
     })
@@ -175,8 +177,16 @@ async fn create_instance(ctx: &Ctx, api: &ApiClient, args: &InstanceCreateArgs) 
     })?;
     let version = published(&template, args.template_version.as_deref())?;
     let bindings = bindings(api, &tenant, &p.placements).await?;
+    let profile = match &p.profile {
+        Some(wanted) => Some(api.resolve_profile(&tenant, wanted).await?),
+        None => None,
+    };
     if !args.yes {
-        let slots: Vec<String> = p.placements.iter().map(|(s, (t, r))| format!("{s} on {t} ({r})")).collect();
+        let mut slots: Vec<String> = p.placements.iter().map(|(s, (t, r))| format!("{s} on {t} ({r})")).collect();
+        slots.push(match &profile {
+            Some(pr) => format!("other slots from profile {}", pr.name),
+            None => "other slots from the default profile".into(),
+        });
         confirm(&format!(
             "{} {} ({}) in tenant {}\n{} {}@{}\n{} {}",
             heading(ctx, "Instance:"),
@@ -190,7 +200,7 @@ async fn create_instance(ctx: &Ctx, api: &ApiClient, args: &InstanceCreateArgs) 
             slots.join(", ")
         ))?;
     }
-    let body = json!({
+    let mut body = json!({
         "tenantId": tenant.id,
         "name": args.name.clone().unwrap_or_else(|| p.slug.clone()),
         "slug": p.slug,
@@ -199,6 +209,9 @@ async fn create_instance(ctx: &Ctx, api: &ApiClient, args: &InstanceCreateArgs) 
         "variables": p.variables,
         "bindings": bindings,
     });
+    if let Some(pr) = &profile {
+        body["profileId"] = json!(pr.id);
+    }
     api.post("/instances", &body).await
 }
 

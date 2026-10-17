@@ -38,6 +38,8 @@ pub struct TemplateSection {
 pub struct InstanceSection {
     pub slug: Option<String>,
     pub environment: Option<String>,
+    /// Profile (name or id) for the slots left out of [placements]; default: the environment's.
+    pub profile: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -256,8 +258,14 @@ pub fn render_project_config(c: &ProjectConfig) -> String {
     if let Some(e) = &c.instance.environment {
         out.push_str(&format!("environment = {}\n", q(e)));
     }
+    match &c.instance.profile {
+        Some(p) => out.push_str(&format!("profile = {}\n", q(p))),
+        None => {
+            out.push_str("# profile = \"production\"   # profile name or id for the slots left out of [placements]\n")
+        }
+    }
     out.push_str(
-        "\n# Placement slot → cloud target (name or id) and region, one line per slot of the template.\n# A slot left out uses the default cloud target of the instance's environment.\n[placements]\n",
+        "\n# Placement slot → cloud target (name or id) and region, one line per slot of the template.\n# A slot left out comes from [instance].profile, or from the default profile of the instance's environment.\n[placements]\n",
     );
     for (slot, b) in &c.placements {
         out.push_str(&format!("{slot} = {{ target = {}, region = {} }}\n", q(&b.target), q(&b.region)));
@@ -286,6 +294,7 @@ mod tests {
         c.template.name = Some("shop".into());
         c.instance.slug = Some("shop-staging".into());
         c.instance.environment = Some("staging".into());
+        c.instance.profile = Some("staging eu".into());
         c.placements.insert("primary".into(), Binding { target: "aws-dev".into(), region: "us-east-1".into() });
         c.scan.exclude = vec!["examples/**".into()];
         let parsed: ProjectConfig = toml::from_str(&render_project_config(&c)).unwrap();

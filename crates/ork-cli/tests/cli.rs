@@ -275,7 +275,7 @@ slug = \"shop-dev\"
 environment = \"development\"
 ";
     std::fs::write(ork_dir.join("config.toml"), base).unwrap();
-    // No placements is fine (default targets); not a terminal and no --yes → usage, before any
+    // No placements is fine (the default profile binds the slots); not a terminal and no --yes → usage, before any
     // network call (the API URL is unreachable).
     ork(cfg.path()).current_dir(project.path()).args(["up"]).assert().code(2).stderr(predicate::str::contains("--yes"));
     let with_placements = format!(

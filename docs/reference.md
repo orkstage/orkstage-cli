@@ -16,7 +16,7 @@ The `ork` CLI is in **Preview**: commands and flags can still change between rel
 | `ork template publish [-f FILE] [--template-version V]` | Publishes a DRAFT version (default: `metadata.version` of the local file) so instances can use it. The server validates it again. Needs permission to publish templates. |
 | `ork import [PATH] [--tenant]` | Scans locally and sends `POST /imports { report }`. Your code never leaves your machine. Prints the import id and its console URL. |
 | `ork instances list [--tenant] [--all]` | Lists the instances you can see; destroyed ones only with `--all`. |
-| `ork instances create [--name] [--template-version V] [--var KEY=VALUE]... [--yes]` | Creates the instance described in `.ork/config.toml` (`tenant`, `[template]`, `[instance]`, `[placements]`, `[variables]`) from the latest published template version. Slots left out of `[placements]` use the default cloud target of the instance's environment. Target names are resolved to ids, which needs a platform role; customers put target ids in `[placements]`. Asks for confirmation; `--yes` is required when not in a terminal. |
+| `ork instances create [--name] [--template-version V] [--var KEY=VALUE]... [--yes]` | Creates the instance described in `.ork/config.toml` (`tenant`, `[template]`, `[instance]`, `[placements]`, `[variables]`) from the latest published template version. Slots left out of `[placements]` come from `[instance].profile` (a profile name or id), or from the default profile of the instance's environment. Target names are resolved to ids, which needs a platform role; customers can leave `[placements]` empty and use a profile. Asks for confirmation; `--yes` is required when not in a terminal. |
 | `ork up [--publish] [--yes] [--wait] [--timeout S]` | Pushes the template when it changed (and publishes it with `--publish`), creates the instance when it does not exist, then deploys. Accepts the same flags as `instances create`. |
 | `ork deploy [--instance SLUG] [--wait] [--timeout S]` | Deploys. `--wait` streams `/deployments/:id/events` and exits with a nonzero code on failure. |
 | `ork status [--instance SLUG]` | Shows the instance, its resources and the last deployment. |
@@ -94,9 +94,10 @@ name = "shop"
 [instance]
 slug = "shop-staging"
 environment = "staging"
+# profile = "staging"   # profile name or id for the slots left out of [placements]
 
 # Placement slot → cloud target (name or id) and region, one line per slot of the template.
-# A slot left out uses the default cloud target of the instance's environment.
+# A slot left out comes from [instance].profile, or from the default profile of the instance's environment.
 [placements]
 primary = { target = "aws-staging", region = "us-east-1" }
 data = { target = "azure-data", region = "westeurope" }

@@ -256,6 +256,15 @@ pub struct DeploymentEvent {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
+pub struct Profile {
+    pub id: String,
+    pub name: String,
+    pub environment: String,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct Tenant {
     pub id: String,
     pub name: String,
@@ -337,6 +346,25 @@ impl ApiClient {
 
     pub async fn targets(&self) -> Result<Vec<CloudTarget>> {
         self.get("/cloud/targets", &[]).await
+    }
+
+    /// Profiles a tenant may use: its own and the shared ones (ADR 0007).
+    pub async fn profiles(&self, tenant_id: &str) -> Result<Vec<Profile>> {
+        self.get("/profiles", &[("tenantId", tenant_id.to_string())]).await
+    }
+
+    /// Accepts a profile name (ignoring case) or id.
+    pub async fn resolve_profile(&self, tenant: &Tenant, wanted: &str) -> Result<Profile> {
+        self.profiles(&tenant.id)
+            .await?
+            .into_iter()
+            .find(|p| p.id == wanted || p.name.eq_ignore_ascii_case(wanted))
+            .ok_or_else(|| {
+                CliError::not_found(
+                    format!("profile \"{wanted}\" not found for tenant {}", tenant.slug),
+                    Some("check [instance].profile in .ork/config.toml".into()),
+                )
+            })
     }
 
     pub async fn template_by_name(&self, name: &str) -> Result<Option<Template>> {
