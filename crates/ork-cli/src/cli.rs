@@ -105,6 +105,10 @@ pub enum Command {
     /// Browse the template marketplace.
     #[command(subcommand)]
     Marketplace(MarketplaceCommand),
+    /// Connect cloud accounts: list, add (step by step), validate and edit cloud targets.
+    /// Needs a platform API key with the targets:manage and instances:read scopes.
+    #[command(subcommand)]
+    Targets(TargetsCommand),
     /// Print shell completions.
     Completions {
         #[arg(value_enum)]
@@ -336,6 +340,78 @@ pub enum IncidentsCommand {
         #[arg(long, default_value = "Resolved from the ork CLI.")]
         message: String,
     },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TargetsCommand {
+    /// List cloud targets with their regions, health and last validation.
+    List,
+    /// Register a cloud target step by step (prompts for what is missing), then validate it.
+    Add(TargetsAddArgs),
+    /// Run the target's checks: sign in, state store, permissions. Exits with 1 when one fails.
+    Validate {
+        /// Target name or id.
+        target: String,
+        /// Region to check (defaults to the target's default region).
+        #[arg(long)]
+        region: Option<String>,
+    },
+    /// Change a target: rotate its role or credential reference, regions, DNS zone. The account
+    /// and the state location are fixed.
+    Edit {
+        /// Target name or id.
+        target: String,
+        #[arg(long)]
+        name: Option<String>,
+        /// Config change as KEY=VALUE (repeatable); KEY= removes the key.
+        #[arg(long = "config", value_name = "KEY=VALUE")]
+        config: Vec<String>,
+        /// New secret reference (env://NAME or aws-sm://name).
+        #[arg(long)]
+        credential_ref: Option<String>,
+        /// Allowed regions, comma separated.
+        #[arg(long)]
+        regions: Option<String>,
+        #[arg(long)]
+        default_region: Option<String>,
+        /// Deployments that may run on the target at the same time.
+        #[arg(long)]
+        max_concurrent: Option<u32>,
+    },
+    /// Print a new random external id for an AWS deployment role.
+    ExternalId,
+}
+
+#[derive(Debug, Args)]
+pub struct TargetsAddArgs {
+    /// Provider (aws, azure, oci, gcp, ... or mock for a simulation).
+    #[arg(long)]
+    pub provider: Option<String>,
+    #[arg(long)]
+    pub name: Option<String>,
+    /// Environment the target serves: development, staging, production, sandbox or any.
+    #[arg(long)]
+    pub environment: Option<String>,
+    /// Tenant (slug or id) for a target only that tenant uses; shared when left out.
+    #[arg(long)]
+    pub tenant: Option<String>,
+    /// Config field as KEY=VALUE (repeatable), e.g. --config accountId=123456789012.
+    #[arg(long = "config", value_name = "KEY=VALUE")]
+    pub config: Vec<String>,
+    /// Secret reference (env://NAME or aws-sm://name), never the secret itself.
+    #[arg(long)]
+    pub credential_ref: Option<String>,
+    /// Allowed regions, comma separated.
+    #[arg(long)]
+    pub regions: Option<String>,
+    #[arg(long)]
+    pub default_region: Option<String>,
+    /// Register only; skip the validation.
+    #[arg(long)]
+    pub no_validate: bool,
+    /// Do not prompt: missing values are errors.
+    #[arg(long, short = 'y')]
+    pub yes: bool,
 }
 
 #[derive(Debug, Subcommand)]

@@ -45,10 +45,12 @@ Run the Linux binary on the Docker Compose network of the platform:
 ```sh
 docker run --rm --network orkstage_default \
   -e ORK_API_URL=http://api:4000 -e ORK_TOKEN=<your ork_live_ key> \
-  -v orkstage-cli-target:/t:ro debian:bookworm-slim /t/release/ork whoami
+  -v orkstage-cli-target:/t:ro orkstage/cli-builder:1.99 /t/release/ork whoami
 ```
 
-Use `http://host.docker.internal:4000` when the API runs on the host.
+Use `http://host.docker.internal:4000` when the API runs on the host. The image needs CA certificates
+(the TLS client loads them at start, even for `http://`), so a bare `debian:bookworm-slim` fails with
+"cannot build the HTTP client"; the builder image has them.
 
 ## Cross compiling
 
