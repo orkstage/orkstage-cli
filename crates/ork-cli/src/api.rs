@@ -59,11 +59,18 @@ impl ApiClient {
         body: Option<&Value>,
     ) -> Result<T> {
         let url = self.url(path);
+        // One key for this request and its rate limit retries: the API does the work once.
+        let key = matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE)
+            .then(idempotency_key)
+            .flatten();
         let mut attempt = 0;
         let resp = loop {
             debug!("{method} {url}");
             let mut req =
                 self.http.request(method.clone(), &url).bearer_auth(&self.token).header("accept", "application/json");
+            if let Some(k) = &key {
+                req = req.header("idempotency-key", k);
+            }
             if !query.is_empty() {
                 req = req.query(query);
             }
@@ -116,6 +123,56 @@ impl ApiClient {
     pub async fn post<T: DeserializeOwned>(&self, path: &str, body: &Value) -> Result<T> {
         self.request(Method::POST, path, &[], Some(body)).await
     }
+
+    /// Every item of a list: follows `nextCursor` in pages of 100, and accepts the bare arrays that
+    /// platforms before open item 21 returned.
+    pub async fn list_all<T: DeserializeOwned>(&self, path: &str, query: &[(&str, String)]) -> Result<Vec<T>> {
+        let mut out = Vec::new();
+        let mut cursor: Option<String> = None;
+        loop {
+            let mut q = query.to_vec();
+            q.push(("limit", "100".to_string()));
+            if let Some(c) = &cursor {
+                q.push(("cursor", c.clone()));
+            }
+            match self.get::<ListOrPage<T>>(path, &q).await? {
+                ListOrPage::List(items) => {
+                    out.extend(items);
+                    return Ok(out);
+                }
+                ListOrPage::Page(page) => {
+                    out.extend(page.items);
+                    match page.next_cursor {
+                        Some(c) if out.len() < 10_000 => cursor = Some(c),
+                        _ => return Ok(out),
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A list response: a page (`items`, `nextCursor`), or a bare array from an older platform.
+#[derive(Debug, Deserialize)]
+#[serde(untagged, bound = "T: DeserializeOwned")]
+enum ListOrPage<T> {
+    Page(PageOf<T>),
+    List(Vec<T>),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", bound = "T: DeserializeOwned")]
+struct PageOf<T> {
+    items: Vec<T>,
+    #[serde(default)]
+    next_cursor: Option<String>,
+}
+
+/// A fresh `Idempotency-Key` (16 random bytes, hex), or none when the OS has no randomness to give.
+fn idempotency_key() -> Option<String> {
+    let mut bytes = [0u8; 16];
+    getrandom::fill(&mut bytes).ok()?;
+    Some(format!("ork-{}", bytes.iter().map(|b| format!("{b:02x}")).collect::<String>()))
 }
 
 /// Retries of a rate limited (429) request, and the longest wait honored from `Retry-After`.
@@ -295,7 +352,7 @@ pub fn is_terminal_status(status: &str) -> bool {
 
 impl ApiClient {
     pub async fn tenants(&self) -> Result<Vec<Tenant>> {
-        self.get("/tenants", &[]).await
+        self.list_all("/tenants", &[]).await
     }
 
     /// Accepts a tenant slug, name or id.
@@ -345,7 +402,7 @@ impl ApiClient {
     }
 
     pub async fn targets(&self) -> Result<Vec<CloudTarget>> {
-        self.get("/cloud/targets", &[]).await
+        self.list_all("/cloud/targets", &[]).await
     }
 
     /// Profiles a tenant may use: its own and the shared ones (ADR 0007).
@@ -368,7 +425,7 @@ impl ApiClient {
     }
 
     pub async fn template_by_name(&self, name: &str) -> Result<Option<Template>> {
-        let all: Vec<Template> = self.get("/templates", &[]).await?;
+        let all: Vec<Template> = self.list_all("/templates", &[]).await?;
         match all.into_iter().find(|t| t.name == name) {
             Some(t) => Ok(Some(self.get(&format!("/templates/{}", t.id), &[]).await?)),
             None => Ok(None),
@@ -379,6 +436,27 @@ impl ApiClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lists_come_as_pages_or_bare_arrays() {
+        let page: ListOrPage<u32> = serde_json::from_str(r#"{"items":[1,2],"nextCursor":"c2"}"#).unwrap();
+        assert!(
+            matches!(page, ListOrPage::Page(PageOf { ref items, next_cursor: Some(ref c) }) if items == &[1, 2] && c == "c2")
+        );
+        let last: ListOrPage<u32> = serde_json::from_str(r#"{"items":[3],"nextCursor":null}"#).unwrap();
+        assert!(matches!(last, ListOrPage::Page(PageOf { next_cursor: None, .. })));
+        let bare: ListOrPage<u32> = serde_json::from_str("[4,5]").unwrap();
+        assert!(matches!(bare, ListOrPage::List(ref v) if v == &[4, 5]));
+    }
+
+    #[test]
+    fn idempotency_keys_are_fresh_and_accepted_by_the_api() {
+        let a = idempotency_key().unwrap();
+        let b = idempotency_key().unwrap();
+        assert_ne!(a, b);
+        assert_eq!(a.len(), 36);
+        assert!(a.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
+    }
 
     #[test]
     fn retry_after_seconds() {
