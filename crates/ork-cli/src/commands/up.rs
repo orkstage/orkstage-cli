@@ -269,7 +269,7 @@ pub async fn up(ctx: &Ctx, args: UpArgs) -> Result<()> {
         let i = create_instance(ctx, &api, &args.create).await?;
         output::note(ctx, &format!("Created instance {} from {}@{}.", i.slug, i.template.name, i.template.version));
     }
-    deploy_slug(ctx, &api, &slug, args.wait, args.timeout).await
+    deploy_slug(ctx, &api, &slug, &crate::cli::ReleaseArgs::default(), args.wait, args.timeout).await
 }
 
 #[cfg(test)]

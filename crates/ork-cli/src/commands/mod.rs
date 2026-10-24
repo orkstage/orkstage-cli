@@ -34,6 +34,7 @@ pub async fn run(cli: Cli, ctx: Ctx) -> Result<()> {
         Command::Import(args) => operate::import(&ctx, args).await,
         Command::Instances(cmd) => operate::instances(&ctx, cmd).await,
         Command::Deploy(args) => operate::deploy(&ctx, args).await,
+        Command::Rollback(args) => ops::rollback(&ctx, args).await,
         Command::Status(sel) => operate::status(&ctx, sel).await,
         Command::Logs(args) => operate::logs(&ctx, args).await,
         Command::Destroy(args) => operate::destroy(&ctx, args).await,

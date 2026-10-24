@@ -86,6 +86,8 @@ pub enum Command {
     Up(UpArgs),
     /// Deploy an instance.
     Deploy(DeployArgs),
+    /// Return an instance to an earlier deployment (by default the last verified one).
+    Rollback(RollbackArgs),
     /// Show an instance, its resources and the last deployment.
     Status(InstanceSelector),
     /// Show recent logs of an instance resource.
@@ -272,10 +274,54 @@ pub struct InstanceSelector {
 pub struct DeployArgs {
     #[command(flatten)]
     pub selector: InstanceSelector,
+    #[command(flatten)]
+    pub release: ReleaseArgs,
     /// Stream deployment events until it finishes; exit non-zero on failure.
     #[arg(long, short = 'w')]
     pub wait: bool,
     /// Give up waiting after this many seconds.
+    #[arg(long, default_value_t = 3600)]
+    pub timeout: u64,
+}
+
+/// How a deploy reaches traffic and how long it is watched; unset flags keep the template's
+/// `spec.release`.
+#[derive(Debug, Args, Default)]
+pub struct ReleaseArgs {
+    /// Release strategy (canary and blue-green need a provider that offers them).
+    #[arg(long, value_enum)]
+    pub strategy: Option<ReleaseStrategy>,
+    /// Share of traffic a canary gets while it is watched, 1 to 50.
+    #[arg(long, value_parser = clap::value_parser!(u8).range(1..=50))]
+    pub traffic: Option<u8>,
+    /// Minutes to watch the release after it deploys; 0 turns watching off.
+    #[arg(long, value_parser = clap::value_parser!(u16).range(0..=240))]
+    pub bake: Option<u16>,
+    /// Only mark a release that fails while watched; do not roll it back.
+    #[arg(long)]
+    pub no_auto_rollback: bool,
+}
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum ReleaseStrategy {
+    Rolling,
+    Canary,
+    BlueGreen,
+}
+
+#[derive(Debug, Args)]
+pub struct RollbackArgs {
+    #[command(flatten)]
+    pub selector: InstanceSelector,
+    /// Deployment id to return to (default: the last deployment that stayed healthy through its bake period).
+    #[arg(long)]
+    pub to: Option<String>,
+    /// Do not ask for confirmation (required when not running in a terminal).
+    #[arg(long, short = 'y')]
+    pub yes: bool,
+    /// Stream deployment events until it finishes; exit non-zero on failure.
+    #[arg(long, short = 'w')]
+    pub wait: bool,
     #[arg(long, default_value_t = 3600)]
     pub timeout: u64,
 }
@@ -420,6 +466,18 @@ pub enum TriggersCommand {
     List(InstanceSelector),
     /// Run a trigger (API keys can run triggers whose template sets on.webhook).
     Run(TriggerRunArgs),
+    /// Approve a trigger run that waits for approval (disruptive actions on production).
+    Approve(TriggerDecisionArgs),
+    /// Cancel a trigger run that waits for approval.
+    Cancel(TriggerDecisionArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct TriggerDecisionArgs {
+    /// Trigger run id, as `ork triggers run` prints it.
+    pub run: String,
+    #[command(flatten)]
+    pub selector: InstanceSelector,
 }
 
 #[derive(Debug, Args)]

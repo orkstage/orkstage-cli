@@ -11,7 +11,8 @@ use super::operate::{finish, follow, selected_slug};
 use super::up::parse_var;
 use crate::api::{ApiClient, Deployment, Instance, Page};
 use crate::cli::{
-    IncidentsCommand, InstanceSelector, MarketplaceCommand, PreviewArgs, TriggerRunArgs, TriggersCommand, UpgradeArgs,
+    IncidentsCommand, InstanceSelector, MarketplaceCommand, PreviewArgs, RollbackArgs, TriggerDecisionArgs,
+    TriggerRunArgs, TriggersCommand, UpgradeArgs,
 };
 use crate::config::Ctx;
 use crate::error::{CliError, Result};
@@ -253,7 +254,59 @@ pub async fn triggers(ctx: &Ctx, cmd: TriggersCommand) -> Result<()> {
             Ok(())
         }
         TriggersCommand::Run(args) => run_trigger(ctx, args).await,
+        TriggersCommand::Approve(args) => decide_trigger(ctx, args, "approve").await,
+        TriggersCommand::Cancel(args) => decide_trigger(ctx, args, "cancel").await,
     }
+}
+
+async fn decide_trigger(ctx: &Ctx, args: TriggerDecisionArgs, decision: &str) -> Result<()> {
+    let api = client(ctx)?;
+    let inst = instance(ctx, &api, &args.selector).await?;
+    let run: Value =
+        api.post(&format!("/instances/{}/trigger-runs/{}/{decision}", inst.id, args.run), &json!({})).await?;
+    if ctx.json() {
+        output::print_json(&run);
+    }
+    let what = if decision == "approve" { "approved" } else { "cancelled" };
+    output::note(ctx, &format!("Trigger run {} {what} ({}).", args.run, text(&run, "status")));
+    Ok(())
+}
+
+/// Returns the instance to an earlier deployment's configuration (ADR 0009).
+pub async fn rollback(ctx: &Ctx, args: RollbackArgs) -> Result<()> {
+    if !args.yes && !ctx.interactive {
+        return Err(CliError::usage(
+            "a rollback needs confirmation",
+            Some("pass --yes when not running in a terminal".into()),
+        ));
+    }
+    let api = client(ctx)?;
+    let inst = instance(ctx, &api, &args.selector).await?;
+    if !args.yes {
+        let target = args.to.clone().unwrap_or_else(|| "the last verified deployment".into());
+        let ok = dialoguer::Confirm::new()
+            .with_prompt(format!("Roll {} back to {target}? Database migrations are not undone.", inst.slug))
+            .default(false)
+            .interact()
+            .map_err(|e| CliError::failed(e.to_string(), None))?;
+        if !ok {
+            return Err(CliError::failed("cancelled", None));
+        }
+    }
+    let body = match &args.to {
+        Some(id) => json!({ "deploymentId": id }),
+        None => json!({}),
+    };
+    let d: Deployment = api.post(&format!("/instances/{}/rollback", inst.id), &body).await?;
+    output::note(ctx, &format!("Rollback of {} queued as deployment {}.", inst.slug, d.id));
+    if !args.wait {
+        if ctx.json() {
+            output::print_json(&d);
+        }
+        return Ok(());
+    }
+    let done = follow(ctx, &api, &d.id, Duration::from_secs(args.timeout)).await?;
+    finish(ctx, done)
 }
 
 async fn run_trigger(ctx: &Ctx, args: TriggerRunArgs) -> Result<()> {
@@ -267,7 +320,17 @@ async fn run_trigger(ctx: &Ctx, args: TriggerRunArgs) -> Result<()> {
     let run: Value =
         api.post(&format!("/instances/{}/triggers/{}/runs", inst.id, args.name), &json!({ "params": params })).await?;
     let id = text(&run, "id").to_string();
-    output::note(ctx, &format!("Trigger {} queued on {} (run {id}).", args.name, inst.slug));
+    if text(&run, "status") == "AWAITING_APPROVAL" {
+        output::note(
+            ctx,
+            &format!(
+                "Trigger {} waits for approval on {} (run {id}): an admin runs `ork triggers approve {id}`.",
+                args.name, inst.slug
+            ),
+        );
+    } else {
+        output::note(ctx, &format!("Trigger {} queued on {} (run {id}).", args.name, inst.slug));
+    }
     if !args.wait {
         if ctx.json() {
             output::print_json(&run);
@@ -279,7 +342,7 @@ async fn run_trigger(ctx: &Ctx, args: TriggerRunArgs) -> Result<()> {
         let page: Page<Value> =
             api.get(&format!("/instances/{}/trigger-runs", inst.id), &[("limit", "50".into())]).await?;
         if let Some(r) = page.items.into_iter().find(|r| text(r, "id") == id)
-            && matches!(text(&r, "status"), "SUCCEEDED" | "FAILED")
+            && matches!(text(&r, "status"), "SUCCEEDED" | "FAILED" | "CANCELLED")
         {
             break r;
         }
