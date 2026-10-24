@@ -1070,9 +1070,9 @@ dependencies = [
 
 [[package]]
 name = "hcl-edit"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a67cc5751cb5996669b9780cd738d4541a76c2d5f2f10c17af4965c5a03a5f5"
+checksum = "69b0f6132a6584a2c29c43c1655ccbd0b57531cb4be993f47685eead3493ffed"
 dependencies = [
  "fnv",
  "hcl-primitives",
@@ -1096,9 +1096,9 @@ dependencies = [
 
 [[package]]
 name = "hcl-rs"
-version = "0.19.8"
+version = "0.19.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "212c6fce17a8b9e0eab43ccf61c8bc5d2c51fc24ad52d19bd1d2be2eeba22d02"
+checksum = "3602c1962a1e872d121b8703211cfa7a92e064dc92fe7be558b1f738417c523e"
 dependencies = [
  "hcl-edit",
  "hcl-primitives",
@@ -2222,9 +2222,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.45"
+version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
+checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "once_cell",
  "ring",
