@@ -4,11 +4,13 @@
 use std::time::{Duration, Instant};
 
 use indicatif::{ProgressBar, ProgressStyle};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use super::{client, resolve_path, scan_project};
 use crate::api::{ApiClient, Deployment, DeploymentEvent, Instance, is_terminal_status};
-use crate::cli::{DeployArgs, DestroyArgs, ImportArgs, InstanceSelector, InstancesCommand, LogsArgs};
+use crate::cli::{
+    DeployArgs, DestroyArgs, ImportArgs, InstanceSelector, InstancesCommand, LogsArgs, ReleaseArgs, ReleaseStrategy,
+};
 use crate::config::Ctx;
 use crate::error::{CliError, Result};
 use crate::output::{self, heading};
@@ -108,12 +110,42 @@ pub(super) fn selected_slug(ctx: &Ctx, sel: &InstanceSelector) -> Result<String>
 pub async fn deploy(ctx: &Ctx, args: DeployArgs) -> Result<()> {
     let slug = selected_slug(ctx, &args.selector)?;
     let api = client(ctx)?;
-    deploy_slug(ctx, &api, &slug, args.wait, args.timeout).await
+    deploy_slug(ctx, &api, &slug, &args.release, args.wait, args.timeout).await
 }
 
-pub async fn deploy_slug(ctx: &Ctx, api: &ApiClient, slug: &str, wait: bool, timeout: u64) -> Result<()> {
+/// The `release` body of a deploy: only what the flags set (ADR 0009).
+pub fn release_body(r: &ReleaseArgs) -> Value {
+    let mut m = Map::new();
+    if let Some(s) = r.strategy {
+        let name = match s {
+            ReleaseStrategy::Rolling => "rolling",
+            ReleaseStrategy::Canary => "canary",
+            ReleaseStrategy::BlueGreen => "blueGreen",
+        };
+        m.insert("strategy".into(), json!(name));
+    }
+    if let Some(t) = r.traffic {
+        m.insert("trafficPercent".into(), json!(t));
+    }
+    if let Some(b) = r.bake {
+        m.insert("bakeMinutes".into(), json!(b));
+    }
+    if r.no_auto_rollback {
+        m.insert("autoRollback".into(), json!(false));
+    }
+    if m.is_empty() { json!({}) } else { json!({ "release": m }) }
+}
+
+pub async fn deploy_slug(
+    ctx: &Ctx,
+    api: &ApiClient,
+    slug: &str,
+    release: &ReleaseArgs,
+    wait: bool,
+    timeout: u64,
+) -> Result<()> {
     let instance = api.instance_by_slug(slug).await?;
-    let d: Deployment = api.post(&format!("/instances/{}/deploy", instance.id), &json!({})).await?;
+    let d: Deployment = api.post(&format!("/instances/{}/deploy", instance.id), &release_body(release)).await?;
     output::note(ctx, &format!("Deployment {} queued for {slug} (correlation id {}).", d.id, d.correlation_id));
     if !wait {
         if ctx.json() {
@@ -321,4 +353,26 @@ pub async fn destroy(ctx: &Ctx, args: DestroyArgs) -> Result<()> {
     }
     let finished = follow(ctx, &api, &d.id, Duration::from_secs(args.timeout)).await?;
     finish(ctx, finished)
+}
+
+#[cfg(test)]
+mod release_tests {
+    use super::*;
+
+    #[test]
+    fn release_body_sends_only_the_flags_given() {
+        assert_eq!(release_body(&ReleaseArgs::default()), json!({}));
+        let canary = ReleaseArgs {
+            strategy: Some(ReleaseStrategy::Canary),
+            traffic: Some(20),
+            bake: Some(30),
+            no_auto_rollback: true,
+        };
+        assert_eq!(
+            release_body(&canary),
+            json!({ "release": { "strategy": "canary", "trafficPercent": 20, "bakeMinutes": 30, "autoRollback": false } })
+        );
+        let blue_green = ReleaseArgs { strategy: Some(ReleaseStrategy::BlueGreen), ..ReleaseArgs::default() };
+        assert_eq!(release_body(&blue_green), json!({ "release": { "strategy": "blueGreen" } }));
+    }
 }
