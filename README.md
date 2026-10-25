@@ -55,13 +55,22 @@ curl -fsSL https://orkstage.io/install.sh | sh          # Linux, macOS
 irm https://orkstage.io/install.ps1 | iex               # Windows
 ```
 
-Or build and install from source (Rust 1.88 or later):
+Or install from [crates.io](https://crates.io/crates/orkstage-cli) (Rust 1.88 or later):
+
+```sh
+cargo install orkstage-cli --locked
+ork --version
+```
+
+Until the first stable release the install scripts take the newest prerelease, whose binaries are
+not code signed yet: Windows SmartScreen and macOS Gatekeeper may warn before the first run.
+
+To build from source:
 
 ```sh
 git clone https://github.com/orkstage/orkstage-cli.git
 cd orkstage-cli
-cargo install --path crates/ork-cli --locked     # or, from crates.io: cargo install orkstage-cli
-ork --version
+cargo install --path crates/ork-cli --locked
 ```
 
 No Rust toolchain? Every build step also runs in Docker; see [docs/building.md](docs/building.md).
