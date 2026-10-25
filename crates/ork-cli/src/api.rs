@@ -77,8 +77,10 @@ impl ApiClient {
             if let Some(b) = body {
                 req = req.json(b);
             }
-            let resp =
-                req.send().await.map_err(|e| CliError::Network { url: self.api_url.clone(), detail: e.to_string() })?;
+            let resp = req
+                .send()
+                .await
+                .map_err(|e| CliError::Network { url: self.api_url.clone(), detail: error_chain(&e) })?;
             // Rate limited: the request was not processed, so sending it again is safe.
             if resp.status() == StatusCode::TOO_MANY_REQUESTS && attempt < MAX_RETRIES {
                 let wait = retry_after(resp.headers()).unwrap_or(1 << attempt).min(MAX_RETRY_WAIT_SECONDS);
@@ -93,7 +95,7 @@ impl ApiClient {
         let header_correlation =
             resp.headers().get("x-correlation-id").and_then(|v| v.to_str().ok()).map(str::to_string);
         let bytes =
-            resp.bytes().await.map_err(|e| CliError::Network { url: self.api_url.clone(), detail: e.to_string() })?;
+            resp.bytes().await.map_err(|e| CliError::Network { url: self.api_url.clone(), detail: error_chain(&e) })?;
         if status.is_success() {
             let slice: &[u8] = if bytes.is_empty() { b"null" } else { &bytes };
             return serde_json::from_slice(slice).map_err(|e| {
@@ -467,4 +469,20 @@ mod tests {
         h.insert(reqwest::header::RETRY_AFTER, "Wed, 21 Oct 2026 07:28:00 GMT".parse().unwrap());
         assert_eq!(retry_after(&h), None);
     }
+}
+
+/// The error and its causes ("error sending request: connection refused"): reqwest's own message
+/// alone does not say what went wrong.
+fn error_chain(e: &dyn std::error::Error) -> String {
+    let mut out = e.to_string();
+    let mut source = e.source();
+    while let Some(cause) = source {
+        let text = cause.to_string();
+        if !out.contains(&text) {
+            out.push_str(": ");
+            out.push_str(&text);
+        }
+        source = cause.source();
+    }
+    out
 }
