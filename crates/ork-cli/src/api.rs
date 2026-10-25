@@ -435,6 +435,22 @@ impl ApiClient {
     }
 }
 
+/// The error and its causes ("error sending request: connection refused"): reqwest's own message
+/// alone does not say what went wrong.
+fn error_chain(e: &dyn std::error::Error) -> String {
+    let mut out = e.to_string();
+    let mut source = e.source();
+    while let Some(cause) = source {
+        let text = cause.to_string();
+        if !out.contains(&text) {
+            out.push_str(": ");
+            out.push_str(&text);
+        }
+        source = cause.source();
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -469,20 +485,4 @@ mod tests {
         h.insert(reqwest::header::RETRY_AFTER, "Wed, 21 Oct 2026 07:28:00 GMT".parse().unwrap());
         assert_eq!(retry_after(&h), None);
     }
-}
-
-/// The error and its causes ("error sending request: connection refused"): reqwest's own message
-/// alone does not say what went wrong.
-fn error_chain(e: &dyn std::error::Error) -> String {
-    let mut out = e.to_string();
-    let mut source = e.source();
-    while let Some(cause) = source {
-        let text = cause.to_string();
-        if !out.contains(&text) {
-            out.push_str(": ");
-            out.push_str(&text);
-        }
-        source = cause.source();
-    }
-    out
 }
