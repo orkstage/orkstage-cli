@@ -32,6 +32,12 @@ fn ork(config: &Path) -> Command {
         .env("ORK_CREDENTIALS_STORE", "file")
         .env("NO_COLOR", "1")
         .env("PATH", std::env::var_os("PATH").unwrap_or_default());
+    // Windows sockets need SystemRoot: without it every connection fails with os error 10106.
+    for name in ["SystemRoot", "SYSTEMROOT"] {
+        if let Some(value) = std::env::var_os(name) {
+            c.env(name, value);
+        }
+    }
     c
 }
 
@@ -201,6 +207,13 @@ fn rate_limited_api(limited: usize) -> (String, std::sync::Arc<std::sync::atomic
                 )
             };
             let _ = stream.write_all(response.as_bytes());
+            // Close gracefully: send FIN, then wait for the client to close. Dropping the socket
+            // at once can reset the connection on Windows before the client reads the response.
+            let _ = stream.flush();
+            let _ = stream.shutdown(std::net::Shutdown::Write);
+            let _ = reader.get_ref().set_read_timeout(Some(std::time::Duration::from_secs(2)));
+            let mut sink = [0u8; 256];
+            while matches!(std::io::Read::read(&mut reader, &mut sink), Ok(n) if n > 0) {}
         }
     });
     (url, count)
