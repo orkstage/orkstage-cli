@@ -32,6 +32,12 @@ fn ork(config: &Path) -> Command {
         .env("ORK_CREDENTIALS_STORE", "file")
         .env("NO_COLOR", "1")
         .env("PATH", std::env::var_os("PATH").unwrap_or_default());
+    // Windows sockets need SystemRoot: without it every connection fails with os error 10106.
+    for name in ["SystemRoot", "SYSTEMROOT"] {
+        if let Some(value) = std::env::var_os(name) {
+            c.env(name, value);
+        }
+    }
     c
 }
 
