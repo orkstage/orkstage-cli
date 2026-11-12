@@ -3,6 +3,7 @@ updates:
   # Rust workspace (Cargo.lock at the root).
   - package-ecosystem: cargo
     directory: /
+    target-branch: staging
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -19,6 +20,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: staging
     schedule:
       interval: weekly
     groups:
@@ -29,6 +31,7 @@ updates:
   # Rust toolchain image used for builds in containers.
   - package-ecosystem: docker
     directory: /docker
+    target-branch: staging
     schedule:
       interval: weekly
     groups:
