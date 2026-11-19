@@ -15,7 +15,7 @@ authors = ["OrkStage contributors"]
 orkstage-scan = { path = "crates/orkstage-scan", version = "0.1.0" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.145", features = ["preserve_order"] }
-hcl-rs = "0.19.8"
+hcl-rs = "0.20.0"
 yaml-rust2 = "0.13.0"
 toml = "1.1.0"
 regex = "1.12"
