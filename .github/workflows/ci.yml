@@ -242,6 +242,13 @@ jobs:
           cp ../scripts/install.sh ../scripts/install.ps1 .
           sha256sum ork-* install.sh install.ps1 > SHA256SUMS
           cat SHA256SUMS
+      # Keyless signature of the checksums (Sigstore, this workflow's identity): verifying
+      # SHA256SUMS with its bundle, then the files against SHA256SUMS, covers every release file
+      # until the binaries themselves are code signed.
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign the checksums
+        working-directory: out
+        run: cosign sign-blob --yes --bundle SHA256SUMS.sigstore.json SHA256SUMS
       # Attestations need a public repository (or GitHub Enterprise Cloud for private ones).
       - if: github.event.repository.visibility == 'public'
         uses: actions/attest-build-provenance@v4
