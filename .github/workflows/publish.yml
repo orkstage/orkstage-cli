@@ -23,20 +23,44 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Trusted Publishing: crates.io trusts this workflow (repository orkstage/orkstage-cli, workflow
+    # publish.yml, environment crates-io) and hands out a token that lasts 30 minutes. Configure it on
+    # both crates (crates.io > crate > Settings > Trusted Publishing), then delete the
+    # CARGO_REGISTRY_TOKEN secret: until then the secret is the fallback.
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
     env:
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      - name: Trusted Publishing token
+        id: auth
+        if: env.DRY_RUN != 'true'
+        continue-on-error: true
+        uses: rust-lang/crates-io-auth-action@v1
+      - name: Registry token
+        run: |
+          if [ -n "$AUTH_TOKEN" ]; then
+            echo "::notice::Publishing with a Trusted Publishing token."
+            echo "CARGO_REGISTRY_TOKEN=$AUTH_TOKEN" >> "$GITHUB_ENV"
+          elif [ -n "$FALLBACK" ]; then
+            echo "::warning::Trusted Publishing is not configured on crates.io; using the CARGO_REGISTRY_TOKEN secret."
+            echo "CARGO_REGISTRY_TOKEN=$FALLBACK" >> "$GITHUB_ENV"
+          fi
+        env:
+          AUTH_TOKEN: ${{ steps.auth.outputs.token }}
+          FALLBACK: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - name: The tag matches the crate version
         if: github.event_name == 'push'
         run: |
           v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
           [ "${GITHUB_REF_NAME#v}" = "$v" ] || { echo "::error::tag $GITHUB_REF_NAME does not match version $v in Cargo.toml"; exit 1; }
-      - name: A crates.io token is configured
+      - name: A crates.io token is available
         if: env.DRY_RUN != 'true'
-        run: '[ -n "$CARGO_REGISTRY_TOKEN" ] || { echo "::error::add the CARGO_REGISTRY_TOKEN secret (crates.io > Account settings > API tokens)"; exit 1; }'
+        run: '[ -n "$CARGO_REGISTRY_TOKEN" ] || { echo "::error::configure Trusted Publishing for this workflow on crates.io (docs/signing.md)"; exit 1; }'
       # The CLI depends on the scan engine, so the engine goes first. A version already on crates.io
       # is skipped, which makes a rerun of a partly failed release safe.
       - name: Publish
