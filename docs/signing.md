@@ -112,9 +112,41 @@ provider you chose, and the workflow is adapted to it.
 Then delete `devid.key`, `devid.p12` and `devid.p12.b64` from your disk, after keeping a copy of the
 key and the `.p12` in a password manager. The certificate is valid for five years.
 
+## What is signed today, without any secret
+
+- **Build provenance**: every release archive has a GitHub attestation
+  (`gh attestation verify ork-x86_64-unknown-linux-gnu.tar.gz -R orkstage/orkstage-cli`).
+- **Checksums**: `SHA256SUMS` is signed keylessly with Sigstore by the release workflow; the bundle is
+  `SHA256SUMS.sigstore.json` in the release. Verify it, then the files:
+
+  ```bash
+  cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json \
+    --certificate-identity-regexp '^https://github.com/orkstage/orkstage-cli/\.github/workflows/ci\.yml@refs/tags/' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  sha256sum --check --ignore-missing SHA256SUMS
+  ```
+
+Code signing (below) is what operating systems check before running a binary; it needs the
+certificates only the owner can obtain.
+
+## crates.io: Trusted Publishing
+
+`publish.yml` asks crates.io for a short lived token with the workflow's GitHub identity
+(`rust-lang/crates-io-auth-action`), so no long lived API token has to be stored. One time setup,
+by an owner of the crates on crates.io, for **both** `orkstage-scan` and `orkstage-cli`:
+
+1. crates.io > the crate > **Settings** > **Trusted Publishing** > **Add**: GitHub, owner
+   `orkstage`, repository `orkstage-cli`, workflow `publish.yml`, environment `crates-io`.
+2. In this repository, **Settings** > **Environments** > `crates-io` (created by the first run):
+   optionally require a reviewer, so every publish waits for an approval.
+3. Run **Publish to crates.io** by hand with dry run off for a version that is not published yet,
+   or let the next stable tag do it; the log says "Publishing with a Trusted Publishing token".
+4. Delete the `CARGO_REGISTRY_TOKEN` secret and revoke that token on crates.io. Until then it is
+   only a fallback.
+
 ## Check it before the first stable release
 
-1. With the secrets set, push a prerelease tag, for example `v0.1.0-rc.6`. Prerelease tags build,
+1. With the secrets set, push a prerelease tag, for example `v0.1.0-rc.8`. Prerelease tags build,
    sign and publish a GitHub prerelease, but never publish to crates.io (`publish.yml` only runs for
    `vX.Y.Z`).
 2. In the run, the "Sign (Windows, Authenticode)" and "Sign and notarize (macOS)" steps must run
@@ -123,7 +155,9 @@ key and the `.p12` in a password manager. The certificate is valid for five year
    `Get-AuthenticodeSignature .\ork.exe` (status `Valid`). macOS:
    `codesign --verify --strict --verbose=2 ./ork` and
    `codesign -dv ./ork 2>&1 | grep Authority` (shows your Developer ID).
-4. Then tag `v0.1.0`: the release is signed and `publish.yml` publishes the crates.
+4. Then tag `v0.1.0`: the release is signed. The crates `0.1.0` are already on crates.io (published
+   by hand on 2026-10-25), so `publish.yml` skips them; the next version publishes through
+   Trusted Publishing.
 
 Note: `install.sh` downloads with `curl`, which does not mark files as downloaded from the internet,
 so macOS runs even an unsigned binary installed that way. Signing matters most for binaries
