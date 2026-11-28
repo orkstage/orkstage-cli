@@ -120,7 +120,7 @@ key and the `.p12` in a password manager. The certificate is valid for five year
   `SHA256SUMS.sigstore.json` in the release. Verify it, then the files:
 
   ```bash
-  cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json     --certificate-identity-regexp '^https://github.com/orkstage/orkstage-cli/\.github/workflows/ci\.yml@refs/tags/'     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json \n    --certificate-identity-regexp '^https://github.com/orkstage/orkstage-cli/\.github/workflows/ci\.yml@refs/tags/' \n    --certificate-oidc-issuer https://token.actions.githubusercontent.com
   sha256sum --check --ignore-missing SHA256SUMS
   ```
 
